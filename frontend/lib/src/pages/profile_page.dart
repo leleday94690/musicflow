@@ -1193,7 +1193,9 @@ class _DesktopCards extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 980 ? 3 : 2;
-        final childAspectRatio = crossAxisCount == 3 ? 1.46 : 1.26;
+        final childAspectRatio = crossAxisCount == 3
+            ? (constraints.maxWidth < 1160 ? 1.24 : 1.38)
+            : 1.26;
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1413,7 +1415,7 @@ class _SecurityCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
               color: kAccent.withValues(alpha: .06),
               borderRadius: BorderRadius.circular(14),
@@ -1422,8 +1424,8 @@ class _SecurityCard extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: .84),
                     borderRadius: BorderRadius.circular(12),
@@ -1478,15 +1480,15 @@ class _SecurityCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           const _VersionInfoTile(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           InkWell(
             onTap: () => _confirmLogout(context),
             borderRadius: BorderRadius.circular(14),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: colorScheme.error.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(14),
@@ -1497,8 +1499,8 @@ class _SecurityCard extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: .68),
                       borderRadius: BorderRadius.circular(12),
@@ -1719,7 +1721,7 @@ class _VersionInfoTile extends StatelessWidget {
             : 'v${info.version}+${info.buildNumber}';
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: const Color(0xFFF7FAFC),
             borderRadius: BorderRadius.circular(14),
@@ -1728,8 +1730,8 @@ class _VersionInfoTile extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: .76),
                   borderRadius: BorderRadius.circular(12),
