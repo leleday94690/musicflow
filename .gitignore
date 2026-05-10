@@ -1,0 +1,24 @@
+backend/.env.local
+frontend/.env.local
+.env.local
+*.log
+
+# Flutter / Dart
+**/.dart_tool/
+**/build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Native dependency caches
+frontend/ios/Pods/
+frontend/macos/Pods/
+frontend/android/.gradle/
+
+# Release artifacts and runtime storage
+dist/
+backend/storage/music/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store

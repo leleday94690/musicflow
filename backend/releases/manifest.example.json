@@ -1,0 +1,27 @@
+{
+  "updates": [
+    {
+      "platform": "macos",
+      "channel": "stable",
+      "version": "1.0.15",
+      "buildNumber": 16,
+      "releaseNotes": "优化播放加载反馈，增加歌曲热度前三名标识，并改为每日凌晨自动统计热度。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.15.zip",
+      "fileName": "MusicFlow-1.0.15.zip",
+      "fileSize": 19135279,
+      "sha256": "c621edebdb8822b37428416a31323375eed08b63187aa468e63e4c0c028cf19c",
+      "mandatory": false
+    },
+    {
+      "platform": "windows",
+      "channel": "stable",
+      "version": "1.0.0",
+      "buildNumber": 1,
+      "releaseNotes": "Windows 安装包准备中。",
+      "fileName": "MusicFlow-Setup-1.0.0.exe",
+      "fileSize": 0,
+      "sha256": "",
+      "mandatory": false
+    }
+  ]
+}

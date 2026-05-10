@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="MusicFlow 是一款面向个人与小团队的私有音乐曲库、播放、下载和歌单管理工具。"
+    />
+    <title>MusicFlow - 私有音乐曲库与播放工作台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header" data-elevated="false">
+      <a class="brand" href="#top" aria-label="MusicFlow 首页">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span>MusicFlow</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="#features">功能</a>
+        <a href="#updates">更新</a>
+        <a href="#download">下载</a>
+      </nav>
+      <a class="header-cta" href="#download">获取应用</a>
+    </header>
+
+    <main id="top">
+      <section class="hero section-band">
+        <canvas id="heroCanvas" aria-hidden="true"></canvas>
+        <div class="hero-inner">
+          <div class="hero-copy reveal">
+            <p class="eyebrow">PRIVATE MUSIC LIBRARY</p>
+            <h1>MusicFlow，为你的音乐收藏建立专属秩序。</h1>
+            <p class="hero-text">
+              面向 macOS 的现代音乐管理应用，整合曲库、歌单、收藏、下载、歌词与播放队列，让音乐收藏从分散文件变成清晰、连续、可维护的聆听空间。
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#download">立即获取</a>
+              <a class="button subtle" href="#features">看看功能</a>
+            </div>
+            <div class="hero-metrics" aria-label="产品亮点">
+              <span><strong>macOS 桌面版</strong> 即装即用</span>
+              <span><strong>一体化曲库</strong> 歌单、收藏、歌词统一管理</span>
+              <span><strong>自动更新</strong> 新版本及时抵达</span>
+            </div>
+          </div>
+
+          <div class="product-stage reveal" aria-label="MusicFlow 产品界面预览">
+            <div class="app-window">
+              <div class="window-sidebar">
+                <div class="mini-logo"></div>
+                <span class="side-active">音乐首页</span>
+                <span>歌单</span>
+                <span>搜索下载</span>
+                <span>个人中心</span>
+              </div>
+              <div class="window-main">
+                <div class="toolbar">
+                  <span class="search-dot"></span>
+                  <span class="search-text">搜索歌曲、歌手或专辑</span>
+                  <span class="pill">批量管理</span>
+                </div>
+                <div class="track active">
+                  <span class="rank">1</span>
+                  <span class="cover"></span>
+                  <span class="track-info"><b>Dear John 3D环绕</b><small>比莉 · 每日热度 TOP1</small></span>
+                  <span class="hot-pill">热度 8</span>
+                  <span class="time">05:06</span>
+                </div>
+                <div class="track">
+                  <span class="rank">2</span>
+                  <span class="cover alt"></span>
+                  <span class="track-info"><b>灵魂尽头</b><small>张惠妹 · 已补全歌词</small></span>
+                  <span class="time">04:38</span>
+                </div>
+                <div class="track">
+                  <span class="rank">3</span>
+                  <span class="cover mint"></span>
+                  <span class="track-info"><b>一场游戏一场梦</b><small>王杰 · 收藏歌单</small></span>
+                  <span class="time">04:15</span>
+                </div>
+                <div class="player-strip">
+                  <span class="cover small"></span>
+                  <span class="playing"><b>正在播放</b><small>加载、失败与队列状态都有反馈</small></span>
+                  <span class="play-button"></span>
+                  <span class="level"></span>
+                </div>
+              </div>
+            </div>
+            <div class="floating-card floating-card-top">
+              <strong>每日 00:00</strong>
+              <span>自动统计热度榜</span>
+            </div>
+            <div class="floating-card floating-card-bottom">
+              <strong>1.0.15</strong>
+              <span>应用内更新已接入</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section intro-section reveal" aria-label="项目介绍">
+        <div class="section-heading">
+          <p class="eyebrow">WHY DOWNLOAD</p>
+          <h2>从收纳到播放，保持同一种流畅节奏。</h2>
+          <p>
+            MusicFlow 将检索、下载、收藏、歌单、歌词和继续播放串联成完整链路。你可以专注于音乐本身，而不是在文件夹、网页和播放器之间反复切换。
+          </p>
+        </div>
+        <div class="intro-grid">
+          <article class="intro-card accent-card">
+            <span class="card-kicker">清晰归档</span>
+            <h3>歌曲信息与歌词集中维护</h3>
+            <p>标题、歌手、专辑、封面、歌词和时长统一呈现，减少散落文件带来的管理成本。</p>
+          </article>
+          <article class="intro-card">
+            <span class="card-kicker">顺畅流转</span>
+            <h3>从搜索到播放无需离开应用</h3>
+            <p>搜索、下载、入库、收藏和播放衔接在同一界面，常用操作保持连贯。</p>
+          </article>
+          <article class="intro-card">
+            <span class="card-kicker">状态明确</span>
+            <h3>关键反馈及时可见</h3>
+            <p>加载、失败、队列切换和版本更新都有清楚反馈，减少等待和误操作。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="features" class="section reveal">
+        <div class="section-heading compact">
+          <p class="eyebrow">FEATURES</p>
+          <h2>围绕日常聆听打造的核心能力。</h2>
+          <p>不追求复杂堆叠，只保留整理、播放和持续维护曲库时真正高频的功能。</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-icon">♪</span>
+            <h3>系统曲库</h3>
+            <p>统一维护标题、歌手、专辑、封面、歌词和时长，让列表始终清晰可读。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">↧</span>
+            <h3>在线下载</h3>
+            <p>在线检索歌曲并加入曲库，任务进度、状态变化和后续整理都保持可控。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">◎</span>
+            <h3>稳定播放</h3>
+            <p>播放加载、异常和失败原因都有反馈，让播放链路更可靠、更可预期。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">★</span>
+            <h3>收藏与歌单</h3>
+            <p>收藏常听作品，按场景组织歌单，并调整歌曲顺序，塑造自己的听歌路径。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">🔥</span>
+            <h3>每日热度</h3>
+            <p>基于播放历史生成每日热门前三名，既保留趋势，也避免即时刷榜带来的干扰。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">▣</span>
+            <h3>应用内更新</h3>
+            <p>客户端自动感知新版本，下载入口与更新信息保持同步，升级过程更轻量。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section workflow-section reveal">
+        <div class="section-heading compact">
+          <p class="eyebrow">HOW TO USE</p>
+          <h2>从安装到播放，路径足够直接。</h2>
+          <p>无需复杂配置，常用操作围绕检索、整理、聆听和延续播放展开。</p>
+        </div>
+        <div class="workflow-grid">
+          <article class="workflow-step">
+            <span>01</span>
+            <h3>安装并进入首页</h3>
+            <p>下载 macOS 版本后即可启动，首页集中呈现曲库、播放状态和核心入口。</p>
+          </article>
+          <article class="workflow-step">
+            <span>02</span>
+            <h3>检索与补全</h3>
+            <p>通过歌名、歌手或专辑定位作品，并按需补充歌词与基础信息。</p>
+          </article>
+          <article class="workflow-step">
+            <span>03</span>
+            <h3>沉淀个人偏好</h3>
+            <p>收藏常听作品，按情绪或场景创建歌单，并调整合适的播放顺序。</p>
+          </article>
+          <article class="workflow-step">
+            <span>04</span>
+            <h3>延续聆听状态</h3>
+            <p>保留队列、模式和播放进度，重新打开也能自然回到上次的节奏。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="stack" class="section split-section reveal">
+        <div class="preview-copy">
+          <p class="eyebrow">EXPERIENCE</p>
+          <h2>把复杂能力收在背后，把日常体验放在前面。</h2>
+          <p>
+            你面对的是一个轻盈的桌面应用：检索、播放、收藏、下载与歌单维护都在清晰界面内完成。后台能力只负责稳定承载数据和更新，不打断使用节奏。
+          </p>
+          <ul class="check-list">
+            <li>首页聚合曲库、播放状态与每日热门。</li>
+            <li>播放进度与队列状态可延续。</li>
+            <li>歌单、收藏、下载任务集中维护。</li>
+            <li>版本更新自动提醒，官网入口同步发布。</li>
+          </ul>
+        </div>
+        <div class="stack-panel" aria-label="使用流程">
+          <div class="stack-node primary-node">下载 MusicFlow</div>
+          <div class="stack-line"></div>
+          <div class="stack-node">检索 / 下载 / 播放</div>
+          <div class="stack-split">
+            <div class="stack-node">收藏</div>
+            <div class="stack-node">歌单</div>
+          </div>
+          <div class="stack-split">
+            <div class="stack-node muted-node">每日热度</div>
+            <div class="stack-node muted-node">自动更新</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="updates" class="section update-section reveal">
+        <div class="section-heading compact">
+          <p class="eyebrow">LATEST UPDATE</p>
+          <h2>1.0.15 版本更新。</h2>
+          <p>围绕播放反馈、热度呈现和更新分发，进一步完善日常使用细节。</p>
+        </div>
+        <div class="update-grid">
+          <article class="update-card">
+            <span class="update-badge">播放体验</span>
+            <h3>播放状态更可感知</h3>
+            <p>加载、超时和音频异常会给出明确反馈，减少无响应带来的不确定感。</p>
+          </article>
+          <article class="update-card">
+            <span class="update-badge">热度榜</span>
+            <h3>热度趋势更稳定</h3>
+            <p>每日刷新热门前三名，播放记录持续沉淀，榜单不因单次点击即时波动。</p>
+          </article>
+          <article class="update-card">
+            <span class="update-badge">版本分发</span>
+            <h3>分发体验更完整</h3>
+            <p>应用内更新与官网安装包同步发布，旧版本客户端可直接感知新版本。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="download" class="section reveal">
+        <div class="section-heading compact">
+          <p class="eyebrow">DOWNLOAD</p>
+          <h2>获取最新版 MusicFlow。</h2>
+          <p>当前推荐下载 macOS 桌面版；其他平台版本会在准备完成后陆续开放。</p>
+        </div>
+        <div class="download-grid">
+          <article class="download-card recommended">
+            <span class="tag">推荐 · 1.0.15</span>
+            <h3>macOS 桌面版</h3>
+            <p>适合日常整理曲库、沉淀歌单、下载歌曲与连续播放，支持应用内更新。</p>
+            <a class="download-button" href="/releases/MusicFlow-1.0.15.dmg" data-download="macOS 桌面版">下载 macOS</a>
+          </article>
+          <article class="download-card">
+            <span class="tag soft-tag">计划中</span>
+            <h3>Windows 桌面版</h3>
+            <p>后续提供 Windows 安装包，延续一致的曲库管理与播放体验。</p>
+            <button class="download-button ghost" data-download="Windows 桌面版">即将推出</button>
+          </article>
+          <article class="download-card">
+            <span class="tag soft-tag">更新</span>
+            <h3>版本更新</h3>
+            <p>客户端会自动检查新版本，官网同步保留最新 macOS 安装包入口。</p>
+            <a class="download-button ghost" href="#updates" data-download="版本更新">查看更新</a>
+          </article>
+          <article class="download-card">
+            <span class="tag soft-tag">体验</span>
+            <h3>网页介绍</h3>
+            <p>先浏览核心能力与更新内容，再决定是否下载桌面客户端。</p>
+            <a class="download-button ghost" href="#features" data-download="Web 体验版">继续浏览</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-section reveal">
+        <div>
+          <p class="eyebrow">BUILT FOR DAILY USE</p>
+          <h2>克制而完整，适合长期使用。</h2>
+          <p>曲库、下载、播放、歌单和更新围绕真实使用链路展开，保持轻量但不零散。</p>
+        </div>
+        <div class="status-list">
+          <span>账号隔离</span>
+          <span>播放历史</span>
+          <span>歌词偏移</span>
+          <span>热度快照</span>
+          <span>在线下载</span>
+          <span>应用更新</span>
+          <span>官网分发</span>
+        </div>
+      </section>
+
+      <section id="faq" class="section faq reveal">
+        <div class="section-heading compact">
+          <p class="eyebrow">FAQ</p>
+          <h2>常见问题</h2>
+        </div>
+        <details open>
+          <summary>MusicFlow 适合谁使用？</summary>
+          <p>适合希望统一管理音乐收藏、在线下载、歌单与播放历史的个人用户。</p>
+        </details>
+        <details>
+          <summary>为什么热度不会即时变化？</summary>
+          <p>播放行为会先沉淀为历史记录，热度榜每日统一计算，避免频繁波动，让趋势更稳定。</p>
+        </details>
+        <details>
+          <summary>客户端如何获取更新？</summary>
+          <p>客户端会根据当前版本检查最新发布信息，并获取下载地址、文件大小和校验值。</p>
+        </details>
+        <details>
+          <summary>这只是一个展示页吗？</summary>
+          <p>不是。官网只是下载入口，客户端连接真实接口与数据，用于日常曲库管理和播放。</p>
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="brand footer-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span>MusicFlow</span>
+      </div>
+      <p>© 2026 MusicFlow. Built for calm music management.</p>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
