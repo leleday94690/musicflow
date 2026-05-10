@@ -41,6 +41,9 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release --dart-define=MUSICFLOW_API_BASE_URL=${{ inputs.api_base_url }}
 
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
       - name: Resolve version
         id: version
         shell: pwsh
@@ -56,21 +59,42 @@ jobs:
         id: package
         shell: pwsh
         run: |
-          $artifactName = "MusicFlow-Windows-${{ steps.version.outputs.value }}.zip"
+          $zipName = "MusicFlow-Windows-${{ steps.version.outputs.value }}.zip"
           $releaseDir = "build\windows\x64\runner\Release"
-          Compress-Archive -Path "$releaseDir\*" -DestinationPath "..\$artifactName" -Force
-          $hash = (Get-FileHash "..\$artifactName" -Algorithm SHA256).Hash.ToLower()
-          $size = (Get-Item "..\$artifactName").Length
-          "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath "..\$zipName" -Force
+          $hash = (Get-FileHash "..\$zipName" -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item "..\$zipName").Length
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
           "sha256=$hash" >> $env:GITHUB_OUTPUT
           "size=$size" >> $env:GITHUB_OUTPUT
-          Write-Host "artifact=$artifactName"
-          Write-Host "sha256=$hash"
-          Write-Host "size=$size"
+          Write-Host "zip=$zipName"
+          Write-Host "zip_sha256=$hash"
+          Write-Host "zip_size=$size"
 
-      - name: Upload artifact
+      - name: Build Windows installer
+        id: installer
+        shell: pwsh
+        run: |
+          $setupBaseName = "MusicFlow-Setup-${{ steps.version.outputs.value }}"
+          $setupName = "$setupBaseName.exe"
+          $releaseDir = (Resolve-Path "build\windows\x64\runner\Release").Path
+          $outputDir = (Resolve-Path "..").Path
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "windows\installer\musicflow.iss" "/DMyAppVersion=${{ steps.version.outputs.value }}" "/DMySourceDir=$releaseDir" "/DMyOutputDir=$outputDir" "/DMyOutputBaseFilename=$setupBaseName"
+          $hash = (Get-FileHash "..\$setupName" -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item "..\$setupName").Length
+          "setup_name=$setupName" >> $env:GITHUB_OUTPUT
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+          "size=$size" >> $env:GITHUB_OUTPUT
+          Write-Host "setup=$setupName"
+          Write-Host "setup_sha256=$hash"
+          Write-Host "setup_size=$size"
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.package.outputs.artifact_name }}
-          path: ${{ steps.package.outputs.artifact_name }}
+          name: MusicFlow-Windows-${{ steps.version.outputs.value }}
+          path: |
+            ${{ steps.package.outputs.zip_name }}
+            ${{ steps.installer.outputs.setup_name }}
           if-no-files-found: error
