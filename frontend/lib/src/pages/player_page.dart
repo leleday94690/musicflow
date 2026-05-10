@@ -1372,10 +1372,11 @@ class _ImmersiveLyrics extends StatefulWidget {
 class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
   static const double _lyricRowExtent = 56;
 
-  final _controller = ScrollController();
+  ScrollController _controller = ScrollController();
   int _lastIndex = -2;
   int _scrollRequest = 0;
   bool _hasPositionedInitialLyric = false;
+  bool _routeWasCovered = false;
   bool _savingOffset = false;
   bool _fetchingLyrics = false;
   String? _lyricsMessage;
@@ -1390,13 +1391,38 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
     if (_songContentKey(oldWidget.song) != _songContentKey(widget.song)) {
       _lastIndex = -2;
       _hasPositionedInitialLyric = false;
+      _routeWasCovered = false;
       if (_controller.hasClients) {
         _controller.jumpTo(0);
       }
     }
   }
 
-  void _scrollToLyric(int index, {required bool animated, int retry = 0}) {
+  double _targetOffsetForLyric({
+    required int index,
+    required double viewport,
+    required int lineCount,
+    ScrollPosition? position,
+  }) {
+    final topPadding = _lyricVerticalPadding(viewport);
+    final activeCenter =
+        topPadding + index * _lyricRowExtent + _lyricRowExtent / 2;
+    final contentHeight = topPadding * 2 + lineCount * _lyricRowExtent;
+    final estimatedMaxScrollExtent = contentHeight > viewport
+        ? contentHeight - viewport
+        : 0.0;
+    final maxScrollExtent = position != null && position.hasContentDimensions
+        ? position.maxScrollExtent
+        : estimatedMaxScrollExtent;
+    return (activeCenter - viewport / 2).clamp(0.0, maxScrollExtent).toDouble();
+  }
+
+  void _scrollToLyric(
+    int index, {
+    required bool animated,
+    required int lineCount,
+    int retry = 0,
+  }) {
     final request = ++_scrollRequest;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || request != _scrollRequest) {
@@ -1404,24 +1430,33 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
       }
       if (!_controller.hasClients) {
         if (retry < 3) {
-          _scrollToLyric(index, animated: animated, retry: retry + 1);
+          _scrollToLyric(
+            index,
+            animated: animated,
+            lineCount: lineCount,
+            retry: retry + 1,
+          );
         }
         return;
       }
       final position = _controller.position;
       if (!position.hasContentDimensions) {
         if (retry < 3) {
-          _scrollToLyric(index, animated: animated, retry: retry + 1);
+          _scrollToLyric(
+            index,
+            animated: animated,
+            lineCount: lineCount,
+            retry: retry + 1,
+          );
         }
         return;
       }
       final viewport = position.viewportDimension;
-      final topPadding = _lyricVerticalPadding(viewport);
-      final activeCenter =
-          topPadding + index * _lyricRowExtent + _lyricRowExtent / 2;
-      final target = (activeCenter - viewport * .38).clamp(
-        0.0,
-        position.maxScrollExtent,
+      final target = _targetOffsetForLyric(
+        index: index,
+        viewport: viewport,
+        lineCount: lineCount,
+        position: position,
       );
       if (animated) {
         unawaited(
@@ -1616,6 +1651,11 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                 : StreamBuilder<Duration>(
                     stream: widget.positionStream,
                     builder: (context, snapshot) {
+                      final routeVisible =
+                          ModalRoute.of(context)?.isCurrent ?? true;
+                      if (!routeVisible) {
+                        _routeWasCovered = true;
+                      }
                       final adjustedPosition =
                           (snapshot.data ?? adjustedInitialPosition) +
                           (snapshot.hasData ? offsetDuration : Duration.zero);
@@ -1626,14 +1666,61 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                       if (current < 0) {
                         current = 0;
                       }
-                      if (current != _lastIndex) {
-                        final shouldAnimate = _hasPositionedInitialLyric;
-                        _lastIndex = current;
-                        _hasPositionedInitialLyric = true;
-                        _scrollToLyric(current, animated: shouldAnimate);
-                      }
                       return LayoutBuilder(
                         builder: (context, constraints) {
+                          if (!routeVisible) {
+                            return ListView.builder(
+                              controller: _controller,
+                              physics: const BouncingScrollPhysics(),
+                              padding: EdgeInsets.symmetric(
+                                vertical: _lyricVerticalPadding(
+                                  constraints.maxHeight,
+                                ),
+                              ),
+                              itemExtent: _lyricRowExtent,
+                              itemCount: timedLines.length,
+                              itemBuilder: (context, index) {
+                                final lyricIndex = index;
+                                final active = lyricIndex == current;
+                                final distance = (lyricIndex - current).abs();
+                                final intro = hasIntroLine && lyricIndex == 0;
+                                return Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _LyricLineText(
+                                    active: active,
+                                    distance: distance,
+                                    intro: intro,
+                                    text: timedLines[lyricIndex].text,
+                                  ),
+                                );
+                              },
+                            );
+                          }
+                          if (!_hasPositionedInitialLyric || _routeWasCovered) {
+                            final initialOffset = _targetOffsetForLyric(
+                              index: current,
+                              viewport: constraints.maxHeight,
+                              lineCount: timedLines.length,
+                            );
+                            if (!_controller.hasClients) {
+                              _controller.dispose();
+                              _controller = ScrollController(
+                                initialScrollOffset: initialOffset,
+                              );
+                            } else {
+                              _controller.jumpTo(initialOffset);
+                            }
+                            _lastIndex = current;
+                            _hasPositionedInitialLyric = true;
+                            _routeWasCovered = false;
+                          } else if (current != _lastIndex) {
+                            _lastIndex = current;
+                            _scrollToLyric(
+                              current,
+                              animated: true,
+                              lineCount: timedLines.length,
+                            );
+                          }
                           return ListView.builder(
                             controller: _controller,
                             physics: const BouncingScrollPhysics(),
@@ -1651,33 +1738,11 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                               final intro = hasIntroLine && lyricIndex == 0;
                               return Align(
                                 alignment: Alignment.centerLeft,
-                                child: AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeOutCubic,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium!
-                                      .copyWith(
-                                        color: active
-                                            ? kAccentDark
-                                            : kInk.withValues(
-                                                alpha: distance <= 2
-                                                    ? .62
-                                                    : .34,
-                                              ),
-                                        fontSize: active ? 25 : 19,
-                                        fontWeight: active
-                                            ? FontWeight.w900
-                                            : FontWeight.w600,
-                                        height: 1.35,
-                                      ),
-                                  child: intro
-                                      ? _IntroLyricBeat(active: active)
-                                      : Text(
-                                          timedLines[lyricIndex].text,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                child: _LyricLineText(
+                                  active: active,
+                                  distance: distance,
+                                  intro: intro,
+                                  text: timedLines[lyricIndex].text,
                                 ),
                               );
                             },
@@ -1689,6 +1754,39 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LyricLineText extends StatelessWidget {
+  const _LyricLineText({
+    required this.active,
+    required this.distance,
+    required this.intro,
+    required this.text,
+  });
+
+  final bool active;
+  final int distance;
+  final bool intro;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedDefaultTextStyle(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+        color: active
+            ? kAccentDark
+            : kInk.withValues(alpha: distance <= 2 ? .62 : .34),
+        fontSize: active ? 25 : 19,
+        fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+        height: 1.35,
+      ),
+      child: intro
+          ? _IntroLyricBeat(active: active)
+          : Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
