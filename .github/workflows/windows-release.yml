@@ -27,7 +27,8 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          flutter-version: 3.38.7
+          cache: false
 
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
@@ -51,7 +52,7 @@ jobs:
           $inputVersion = '${{ inputs.version }}'
           if ([string]::IsNullOrWhiteSpace($inputVersion)) {
             $line = Select-String -Path pubspec.yaml -Pattern '^version:' | Select-Object -First 1
-            $inputVersion = ($line.Line -replace '^version:\s*', '') -replace '\+', '-'
+            $inputVersion = $line.Line -replace '^version:\s*', ''
           }
           "value=$inputVersion" >> $env:GITHUB_OUTPUT
 
