@@ -15,13 +15,13 @@
     {
       "platform": "windows",
       "channel": "stable",
-      "version": "1.0.18",
-      "buildNumber": 19,
-      "releaseNotes": "优化 Windows 托盘后台运行提示、静默更新后自动启动流程，并改善桌面端账号与安全卡片布局。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.18+19.exe",
-      "fileName": "MusicFlow-Setup-1.0.18+19.exe",
-      "fileSize": 11594907,
-      "sha256": "a9ad1297a687c77ed1f105941c99a9e97898e56a12b40cd0d625739c0b0a7453",
+      "version": "1.0.20",
+      "buildNumber": 21,
+      "releaseNotes": "稳定首页歌词滚动，减少切换详情页、左侧标签和返回首页时的重复动画。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.20+21.exe",
+      "fileName": "MusicFlow-Setup-1.0.20+21.exe",
+      "fileSize": 11602325,
+      "sha256": "a73dfd191efd44447c78849bafc8008b9ddc5ca7a579e629724bdfc0ae060236",
       "mandatory": false
     }
   ]
