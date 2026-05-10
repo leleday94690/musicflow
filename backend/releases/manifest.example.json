@@ -8,8 +8,8 @@
       "releaseNotes": "稳定首页歌词滚动，减少切换详情页、左侧标签和返回首页时的重复动画。",
       "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.20.zip",
       "fileName": "MusicFlow-1.0.20.zip",
-      "fileSize": 0,
-      "sha256": "",
+      "fileSize": 19382951,
+      "sha256": "ea2ff0b9288f47f0e7a28353ecfb050ea4e202d7acaac5f290fa673b7cc9cb8b",
       "mandatory": false
     },
     {
