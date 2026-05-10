@@ -118,8 +118,7 @@ class _DesktopWindowController with WindowListener, TrayListener {
         await _showWindow();
       case 'exit':
         _isQuitting = true;
-        await trayManager.destroy();
-        await windowManager.destroy();
+        exit(0);
     }
   }
 

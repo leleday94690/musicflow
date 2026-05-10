@@ -22,6 +22,8 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+CloseApplications=yes
+CloseApplicationsFilter={#MyAppExeName}
 OutputDir={#MyOutputDir}
 OutputBaseFilename={#MyOutputBaseFilename}
 Compression=lzma2
@@ -38,6 +40,11 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\data"
+Type: files; Name: "{app}\*.dll"
+Type: files; Name: "{app}\{#MyAppExeName}"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

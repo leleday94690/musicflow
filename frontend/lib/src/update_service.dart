@@ -218,11 +218,26 @@ class UpdateService {
 
   Future<bool> _installWindows(String installerPath) async {
     try {
-      await Process.start(installerPath, [
-        '/VERYSILENT',
-        '/SUPPRESSMSGBOXES',
-        '/CLOSEAPPLICATIONS',
-        '/RESTARTAPPLICATIONS',
+      final installerFile = File(installerPath);
+      if (!await installerFile.exists()) {
+        debugPrint('[Update] Windows installer not found: $installerPath');
+        return false;
+      }
+      final directory = await getTemporaryDirectory();
+      final script = File(
+        '${directory.path}${Platform.pathSeparator}musicflow_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
+      );
+      final installDir = File(Platform.resolvedExecutable).parent.path;
+      await script.writeAsString(
+        _windowsInstallScript(
+          installerPath: installerPath,
+          installDir: installDir,
+          appPid: pid,
+        ),
+      );
+      await Process.start('cmd.exe', [
+        '/c',
+        script.path,
       ], mode: ProcessStartMode.detached);
       exit(0);
     } catch (error) {
@@ -341,6 +356,51 @@ log "opening $TARGET_PATH"
 log "installer finished"
 exit 0
 ''';
+
+String _windowsInstallScript({
+  required String installerPath,
+  required String installDir,
+  required int appPid,
+}) {
+  final installer = _escapeWindowsBatchValue(installerPath);
+  final directory = _escapeWindowsBatchValue(installDir);
+  return '''
+@echo off
+setlocal
+set "INSTALLER=$installer"
+set "INSTALL_DIR=$directory"
+set "APP_PID=$appPid"
+set "LOG=%TEMP%\\MusicFlow-updater.log"
+echo [%date% %time%] installer started, pid=%APP_PID%, installer=%INSTALLER%, dir=%INSTALL_DIR%>>"%LOG%"
+for /l %%i in (1,1,120) do (
+  tasklist /FI "PID eq %APP_PID%" 2>nul | findstr /R /C:"[ ]%APP_PID%[ ]" >nul
+  if errorlevel 1 goto install
+  timeout /t 1 /nobreak >nul
+)
+echo [%date% %time%] app process still running, forcing taskkill>>"%LOG%"
+taskkill /PID %APP_PID% /T /F >>"%LOG%" 2>&1
+timeout /t 1 /nobreak >nul
+:install
+if not exist "%INSTALLER%" (
+  echo [%date% %time%] installer not found>>"%LOG%"
+  exit /b 1
+)
+echo [%date% %time%] running installer>>"%LOG%"
+"%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /DIR="%INSTALL_DIR%" >>"%LOG%" 2>&1
+echo [%date% %time%] installer exit code=%ERRORLEVEL%>>"%LOG%"
+exit /b %ERRORLEVEL%
+''';
+}
+
+String _escapeWindowsBatchValue(String value) {
+  return value
+      .replaceAll('^', '^^')
+      .replaceAll('&', '^&')
+      .replaceAll('|', '^|')
+      .replaceAll('<', '^<')
+      .replaceAll('>', '^>')
+      .replaceAll('%', '%%');
+}
 
 class AppUpdateInfo {
   const AppUpdateInfo({
