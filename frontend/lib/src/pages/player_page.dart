@@ -241,21 +241,21 @@ class PlayerPage extends StatelessWidget {
                 final compactHeight = constraints.maxHeight < 760;
                 final tinyHeight = constraints.maxHeight < 650;
                 final artworkSize = tinyHeight
-                    ? 170.0
+                    ? 150.0
                     : compactHeight
-                    ? 220.0
-                    : 260.0;
+                    ? 190.0
+                    : 240.0;
                 final mainContentMaxHeight = tinyHeight
-                    ? 310.0
+                    ? 260.0
                     : compactHeight
-                    ? 360.0
-                    : 420.0;
+                    ? 310.0
+                    : 360.0;
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                     34,
                     tinyHeight ? 12 : 18,
                     34,
-                    tinyHeight ? 22 : 30,
+                    tinyHeight ? 34 : 48,
                   ),
                   child: Column(
                     children: [
