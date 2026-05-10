@@ -245,7 +245,6 @@ class PlayerPage extends StatelessWidget {
                     : compactHeight
                     ? 220.0
                     : 260.0;
-                final showQueuePanel = constraints.maxWidth >= 1180;
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                     34,
@@ -275,7 +274,7 @@ class PlayerPage extends StatelessWidget {
                         child: Row(
                           children: [
                             Expanded(
-                              flex: showQueuePanel ? 5 : 6,
+                              flex: 5,
                               child: _NowPlayingPanel(
                                 song: song,
                                 metadataLine: metadataLine,
@@ -284,9 +283,9 @@ class PlayerPage extends StatelessWidget {
                                 tiny: tinyHeight,
                               ),
                             ),
-                            SizedBox(width: showQueuePanel ? 20 : 28),
+                            const SizedBox(width: 24),
                             Expanded(
-                              flex: showQueuePanel ? 5 : 7,
+                              flex: 6,
                               child: _ImmersiveLyrics(
                                 key: ValueKey(
                                   'lyrics-${_songContentKey(song)}',
@@ -302,22 +301,6 @@ class PlayerPage extends StatelessWidget {
                                 onLyricsFetch: onLyricsFetch,
                               ),
                             ),
-                            if (showQueuePanel) ...[
-                              const SizedBox(width: 20),
-                              Expanded(
-                                flex: 4,
-                                child: _DesktopQueuePanel(
-                                  queue: queue.isEmpty ? [song] : queue,
-                                  currentSong: song,
-                                  onSongTap: onSongTap,
-                                  onFavoriteToggle: onFavoriteToggle,
-                                  onQueueRemove: onQueueRemove,
-                                  onQueuePlayNext: onQueuePlayNext,
-                                  onQueueReorder: onQueueReorder,
-                                  onQueueClear: onQueueClear,
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -404,7 +387,16 @@ class PlayerPage extends StatelessWidget {
                                       ),
                                       Align(
                                         alignment: Alignment.centerRight,
-                                        child: const SizedBox(width: 132),
+                                        child: SizedBox(
+                                          width: 132,
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: _GlassIconButton(
+                                              icon: Icons.queue_music_rounded,
+                                              onTap: () => _openQueue(context),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -826,7 +818,6 @@ enum _QueueRowAction { favorite, playNext, remove }
 
 class _QueueSongRow extends StatelessWidget {
   const _QueueSongRow({
-    super.key,
     required this.song,
     required this.index,
     required this.selected,
@@ -1260,98 +1251,6 @@ class _NowPlayingPanel extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DesktopQueuePanel extends StatelessWidget {
-  const _DesktopQueuePanel({
-    required this.queue,
-    required this.currentSong,
-    required this.onSongTap,
-    required this.onFavoriteToggle,
-    required this.onQueueRemove,
-    required this.onQueuePlayNext,
-    required this.onQueueReorder,
-    required this.onQueueClear,
-  });
-
-  final List<Song> queue;
-  final Song currentSong;
-  final SongTapCallback onSongTap;
-  final Future<Song> Function(Song song) onFavoriteToggle;
-  final QueueSongAction onQueueRemove;
-  final QueueSongAction onQueuePlayNext;
-  final QueueReorderAction onQueueReorder;
-  final VoidCallback onQueueClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .62),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: .62)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text('播放队列', style: Theme.of(context).textTheme.titleMedium),
-              const Spacer(),
-              IconButton(
-                tooltip: '清空队列',
-                onPressed: queue.length <= 1 ? null : onQueueClear,
-                icon: const Icon(Icons.clear_all_rounded, color: kMuted),
-              ),
-              Text(
-                '${queue.length} 首',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ReorderableListView.builder(
-              buildDefaultDragHandles: false,
-              physics: const BouncingScrollPhysics(),
-              proxyDecorator: (child, index, animation) => Material(
-                color: Colors.transparent,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 1, end: 1.02).animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                  ),
-                  child: child,
-                ),
-              ),
-              itemCount: queue.length,
-              onReorder: (oldIndex, newIndex) =>
-                  onQueueReorder(queue, oldIndex, newIndex),
-              itemBuilder: (context, index) {
-                final queueSong = queue[index];
-                final selected = queueSong.id == currentSong.id;
-                return _QueueSongRow(
-                  key: ValueKey('desktop-queue-$index-${queueSong.id}'),
-                  song: queueSong,
-                  index: index + 1,
-                  selected: selected,
-                  onTap: () => onSongTap(queueSong, queue: queue),
-                  onFavoriteTap: () => onFavoriteToggle(queueSong),
-                  onPlayNext: selected
-                      ? null
-                      : () => onQueuePlayNext(queueSong, queue),
-                  onRemove: selected
-                      ? null
-                      : () => onQueueRemove(queueSong, queue),
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
