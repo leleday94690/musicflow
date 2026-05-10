@@ -3,13 +3,13 @@
     {
       "platform": "macos",
       "channel": "stable",
-      "version": "1.0.18",
-      "buildNumber": 19,
-      "releaseNotes": "优化 Windows 托盘后台运行提示、静默更新后自动启动流程，并改善桌面端账号与安全卡片布局。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.18.zip",
-      "fileName": "MusicFlow-1.0.18.zip",
-      "fileSize": 19418395,
-      "sha256": "74b683ea4f01b8535cd0d48ee709ee5f039dbbea65c9de16430a7577f1cd0466",
+      "version": "1.0.19",
+      "buildNumber": 20,
+      "releaseNotes": "优化 macOS 个人页两列卡片高度，减少大屏布局下的空白区域。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.19.zip",
+      "fileName": "MusicFlow-1.0.19.zip",
+      "fileSize": 19418422,
+      "sha256": "207ad81340ce23f097e80069bc1e8d11642ec4cadb28a8fbf24c14a1cf8e616c",
       "mandatory": false
     },
     {
