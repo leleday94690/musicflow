@@ -15,12 +15,13 @@
     {
       "platform": "windows",
       "channel": "stable",
-      "version": "1.0.0",
-      "buildNumber": 1,
-      "releaseNotes": "Windows 安装包准备中。",
-      "fileName": "MusicFlow-Setup-1.0.0.exe",
-      "fileSize": 0,
-      "sha256": "",
+      "version": "1.0.15",
+      "buildNumber": 16,
+      "releaseNotes": "发布 Windows 桌面安装包，支持曲库管理、播放、下载与应用内更新。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.15+16.exe",
+      "fileName": "MusicFlow-Setup-1.0.15+16.exe",
+      "fileSize": 11565114,
+      "sha256": "98e1c38a843edb1fad0df3a9703bcd465b7eee3b85a7437cf5d43fba05966e6e",
       "mandatory": false
     }
   ]
