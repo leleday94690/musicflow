@@ -1211,11 +1211,32 @@ class _DesktopCards extends StatelessWidget {
           _ThemeCard(),
           _SecurityCard(onLogout: onLogout),
         ];
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
+        return Column(
           children: [
-            for (final card in cards) SizedBox(width: cardWidth, child: card),
+            for (var index = 0; index < cards.length; index += crossAxisCount)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: index + crossAxisCount < cards.length ? spacing : 0,
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (
+                        var cardIndex = index;
+                        cardIndex <
+                            (index + crossAxisCount).clamp(0, cards.length);
+                        cardIndex++
+                      ) ...[
+                        SizedBox(width: cardWidth, child: cards[cardIndex]),
+                        if (cardIndex <
+                            (index + crossAxisCount).clamp(0, cards.length) - 1)
+                          const SizedBox(width: spacing),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
           ],
         );
       },
