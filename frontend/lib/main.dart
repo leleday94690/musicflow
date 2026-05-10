@@ -41,6 +41,7 @@ Future<void> _configureDesktopWindow() async {
     titleBarStyle: TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
+    await windowManager.setPreventClose(true);
     await windowManager.center();
     await windowManager.show();
     await windowManager.focus();
@@ -69,6 +70,16 @@ class _DesktopWindowController with WindowListener, TrayListener {
 
   @override
   void onWindowClose() async {
+    final preventClose = await windowManager.isPreventClose();
+    if (!preventClose) {
+      return;
+    }
+    if (Platform.isWindows) {
+      final isMinimized = await windowManager.isMinimized();
+      if (isMinimized) {
+        return;
+      }
+    }
     if (_isQuitting) {
       await windowManager.destroy();
       return;
@@ -79,6 +90,11 @@ class _DesktopWindowController with WindowListener, TrayListener {
   @override
   void onTrayIconMouseDown() {
     _showWindow();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
   }
 
   @override

@@ -1192,11 +1192,13 @@ class _DesktopCards extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 980 ? 3 : 2;
+        final childAspectRatio = crossAxisCount == 3 ? 1.46 : 1.26;
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: constraints.maxWidth > 980 ? 3 : 2,
-          childAspectRatio: constraints.maxWidth > 720 ? 1.62 : 1.35,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
           crossAxisSpacing: 14,
           mainAxisSpacing: 14,
           children: [
@@ -1439,6 +1441,8 @@ class _SecurityCard extends StatelessWidget {
                     children: [
                       Text(
                         '账号安全',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: textTheme.labelLarge?.copyWith(
                           color: kInk,
                           fontWeight: FontWeight.w800,
@@ -1740,6 +1744,8 @@ class _VersionInfoTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   '当前版本',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: textTheme.labelLarge?.copyWith(
                     color: kInk,
                     fontWeight: FontWeight.w800,
@@ -1748,6 +1754,8 @@ class _VersionInfoTile extends StatelessWidget {
               ),
               Text(
                 versionText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: textTheme.labelMedium?.copyWith(
                   color: kMuted,
                   fontWeight: FontWeight.w800,
