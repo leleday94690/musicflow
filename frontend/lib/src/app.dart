@@ -26,6 +26,9 @@ import 'widgets/navigation.dart';
 import 'widgets/player_bar.dart';
 import 'widgets/request_loading.dart';
 
+final RouteObserver<PageRoute<dynamic>> musicFlowRouteObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
 class MusicFlowApp extends StatelessWidget {
   const MusicFlowApp({super.key, this.navigatorKey});
 
@@ -35,6 +38,7 @@ class MusicFlowApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
+      navigatorObservers: [musicFlowRouteObserver],
       title: 'MusicFlow',
       debugShowCheckedModeBanner: false,
       theme: buildMusicTheme(),
@@ -50,7 +54,7 @@ class MusicShell extends StatefulWidget {
   State<MusicShell> createState() => _MusicShellState();
 }
 
-class _MusicShellState extends State<MusicShell> {
+class _MusicShellState extends State<MusicShell> with RouteAware {
   static const int _songPageSize = 80;
 
   MusicSection section = MusicSection.music;
@@ -64,11 +68,13 @@ class _MusicShellState extends State<MusicShell> {
   late final StreamSubscription<Duration> _positionSubscription;
   Timer? _playbackSaveTimer;
   Timer? _updateTimer;
+  PageRoute<dynamic>? _currentRoute;
   bool _restoringPlaybackState = false;
   bool _updateChecking = false;
   bool _updateDialogShown = false;
   bool _updateBannerDismissed = false;
   bool _installPromptShowing = false;
+  bool _isRouteVisible = true;
   ProfileOverview? profileOverview;
   AppUpdateInfo? availableUpdate;
   UpdateDownloadState updateDownload = const UpdateDownloadState();
@@ -123,6 +129,19 @@ class _MusicShellState extends State<MusicShell> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _currentRoute) {
+      if (_currentRoute != null) {
+        musicFlowRouteObserver.unsubscribe(this);
+      }
+      _currentRoute = route;
+      musicFlowRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isMobile = width < 760;
@@ -131,6 +150,8 @@ class _MusicShellState extends State<MusicShell> {
       MusicSection.music => HomePage(
         isMobile: isMobile,
         canManageLibrary: canManageLibrary,
+        isRouteVisible: _isRouteVisible,
+        currentPosition: audioController.currentPosition,
         initialSegment: musicInitialSegment,
         currentSong: currentSong,
         isAudioLoading: isAudioLoading,
@@ -357,6 +378,20 @@ class _MusicShellState extends State<MusicShell> {
         ),
       ),
     );
+  }
+
+  @override
+  void didPushNext() {
+    if (_isRouteVisible && mounted) {
+      setState(() => _isRouteVisible = false);
+    }
+  }
+
+  @override
+  void didPopNext() {
+    if (!_isRouteVisible && mounted) {
+      setState(() => _isRouteVisible = true);
+    }
   }
 
   void _setSection(MusicSection value) {
@@ -2191,6 +2226,7 @@ class _MusicShellState extends State<MusicShell> {
 
   @override
   void dispose() {
+    musicFlowRouteObserver.unsubscribe(this);
     libraryController.removeListener(_handleLibraryChanged);
     playbackController.removeListener(_handlePlaybackChanged);
     appLoading.removeListener(_handleLoadingChanged);

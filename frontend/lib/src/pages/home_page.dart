@@ -23,6 +23,8 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.isMobile,
     required this.canManageLibrary,
+    required this.isRouteVisible,
+    required this.currentPosition,
     this.initialSegment = 0,
     required this.currentSong,
     required this.isAudioLoading,
@@ -54,6 +56,8 @@ class HomePage extends StatefulWidget {
 
   final bool isMobile;
   final bool canManageLibrary;
+  final bool isRouteVisible;
+  final Duration currentPosition;
   final int initialSegment;
   final Song? currentSong;
   final bool isAudioLoading;
@@ -494,6 +498,8 @@ class _HomePageState extends State<HomePage> {
                             child: _RightSideLyrics(
                               song: widget.currentSong!,
                               positionStream: widget.positionStream,
+                              isRouteVisible: widget.isRouteVisible,
+                              currentPosition: widget.currentPosition,
                             ),
                           ),
                         ],
@@ -1847,11 +1853,36 @@ class _NowPlayingCardState extends State<_NowPlayingCard> {
   }
 }
 
+bool _sameLyricLines(
+  List<TimedLyricLine> a,
+  List<TimedLyricLine> b,
+) {
+  if (identical(a, b)) {
+    return true;
+  }
+  if (a.length != b.length) {
+    return false;
+  }
+  for (var i = 0; i < a.length; i++) {
+    if (a[i].time != b[i].time || a[i].text != b[i].text) {
+      return false;
+    }
+  }
+  return true;
+}
+
 class _RightSideLyrics extends StatelessWidget {
-  const _RightSideLyrics({required this.song, required this.positionStream});
+  const _RightSideLyrics({
+    required this.song,
+    required this.positionStream,
+    required this.isRouteVisible,
+    required this.currentPosition,
+  });
 
   final Song song;
   final Stream<Duration> positionStream;
+  final bool isRouteVisible;
+  final Duration currentPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -1860,7 +1891,6 @@ class _RightSideLyrics extends StatelessWidget {
     final fallbackLines = plainLines.isEmpty
         ? const ['暂无歌词信息', '播放含歌词的歌曲后', '这里会同步展示']
         : plainLines;
-
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
@@ -1882,9 +1912,9 @@ class _RightSideLyrics extends StatelessWidget {
                 child: timedLines.isEmpty
                     ? _StaticRightLyrics(lines: fallbackLines)
                     : StreamBuilder<Duration>(
-                        stream: positionStream,
-                        builder: (context, snapshot) {
-                          final position = snapshot.data ?? Duration.zero;
+                      stream: positionStream,
+                      builder: (context, snapshot) {
+                          final position = snapshot.data ?? currentPosition;
                           var activeIndex = currentLyricIndex(
                             timedLines,
                             position,
@@ -1896,6 +1926,7 @@ class _RightSideLyrics extends StatelessWidget {
                             key: ValueKey('lyrics-${song.id}'),
                             lines: timedLines,
                             activeIndex: activeIndex,
+                            isVisible: isRouteVisible,
                           );
                         },
                       ),
@@ -1913,10 +1944,12 @@ class _AnimatedRightLyricList extends StatefulWidget {
     super.key,
     required this.lines,
     required this.activeIndex,
+    required this.isVisible,
   });
 
   final List<TimedLyricLine> lines;
   final int activeIndex;
+  final bool isVisible;
 
   @override
   State<_AnimatedRightLyricList> createState() =>
@@ -1926,7 +1959,7 @@ class _AnimatedRightLyricList extends StatefulWidget {
 class _AnimatedRightLyricListState extends State<_AnimatedRightLyricList> {
   static const double _lineExtent = 28;
 
-  final _controller = ScrollController();
+  ScrollController? _controller;
   int _lastActiveIndex = -1;
   double _verticalPadding = 0;
   double _viewportHeight = 0;
@@ -1935,37 +1968,43 @@ class _AnimatedRightLyricListState extends State<_AnimatedRightLyricList> {
   void initState() {
     super.initState();
     _lastActiveIndex = widget.activeIndex;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActive());
   }
 
   @override
   void didUpdateWidget(covariant _AnimatedRightLyricList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.lines != widget.lines) {
-      _lastActiveIndex = -1;
-      if (_controller.hasClients) {
-        _controller.jumpTo(0);
-      }
-    }
-    if (_lastActiveIndex != widget.activeIndex) {
+    final linesChanged = !_sameLyricLines(oldWidget.lines, widget.lines);
+    final becameVisible = !oldWidget.isVisible && widget.isVisible;
+    if (linesChanged || becameVisible) {
+      _controller?.dispose();
+      _controller = null;
       _lastActiveIndex = widget.activeIndex;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActive());
+      return;
+    }
+    if (widget.isVisible && _controller != null && _lastActiveIndex != widget.activeIndex) {
+      _lastActiveIndex = widget.activeIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToActive(animated: true);
+      });
+    } else {
+      _lastActiveIndex = widget.activeIndex;
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
-  void _scrollToActive() {
-    if (!mounted || !_controller.hasClients) {
-      return;
+  bool _scrollToActive({required bool animated}) {
+    final controller = _controller;
+    if (!mounted || controller == null || !controller.hasClients) {
+      return false;
     }
-    final position = _controller.position;
+    final position = controller.position;
     if (!position.hasContentDimensions) {
-      return;
+      return false;
     }
     final activeCenter =
         _verticalPadding + widget.activeIndex * _lineExtent + _lineExtent / 2;
@@ -1973,11 +2012,37 @@ class _AnimatedRightLyricListState extends State<_AnimatedRightLyricList> {
       0.0,
       position.maxScrollExtent,
     );
-    _controller.animateTo(
+    if (!animated) {
+      controller.jumpTo(target);
+      return true;
+    }
+    controller.animateTo(
       target,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
+    return true;
+  }
+
+  double _targetOffsetForLyric({
+    required int index,
+    required double viewport,
+    required int lineCount,
+    ScrollPosition? position,
+  }) {
+    final topPadding = (viewport * .1).clamp(8.0, 28.0);
+    final activeCenter = topPadding + index * _lineExtent + _lineExtent / 2;
+    final contentHeight = topPadding * 2 + lineCount * _lineExtent;
+    final estimatedMaxScrollExtent = contentHeight > viewport
+        ? contentHeight - viewport
+        : 0.0;
+    final maxScrollExtent = position != null && position.hasContentDimensions
+        ? position.maxScrollExtent
+        : estimatedMaxScrollExtent;
+    return (activeCenter - viewport * .24).clamp(
+      0.0,
+      maxScrollExtent,
+    ).toDouble();
   }
 
   @override
@@ -1990,10 +2055,20 @@ class _AnimatedRightLyricListState extends State<_AnimatedRightLyricList> {
             lines.length > 1 &&
             constraints.maxHeight.isFinite &&
             lines.length * _lineExtent <= constraints.maxHeight;
+        final controller = _controller;
         if (!fillViewport) {
           _viewportHeight = constraints.maxHeight;
           final verticalPadding = (constraints.maxHeight * .1).clamp(8.0, 28.0);
           _verticalPadding = verticalPadding;
+          if (controller == null) {
+            final initialOffset = _targetOffsetForLyric(
+              index: activeIndex,
+              viewport: constraints.maxHeight,
+              lineCount: lines.length,
+            );
+            _controller = ScrollController(initialScrollOffset: initialOffset);
+            _lastActiveIndex = activeIndex;
+          }
           return ClipRect(
             child: ListView.builder(
               controller: _controller,
