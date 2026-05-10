@@ -241,21 +241,16 @@ class PlayerPage extends StatelessWidget {
                 final compactHeight = constraints.maxHeight < 760;
                 final tinyHeight = constraints.maxHeight < 650;
                 final artworkSize = tinyHeight
-                    ? 150.0
+                    ? 170.0
                     : compactHeight
-                    ? 190.0
-                    : 240.0;
-                final mainContentMaxHeight = tinyHeight
-                    ? 260.0
-                    : compactHeight
-                    ? 310.0
-                    : 360.0;
+                    ? 220.0
+                    : 250.0;
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                     34,
                     tinyHeight ? 12 : 18,
                     34,
-                    tinyHeight ? 34 : 48,
+                    tinyHeight ? 18 : 28,
                   ),
                   child: Column(
                     children: [
@@ -275,147 +270,66 @@ class PlayerPage extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: tinyHeight ? 8 : 18),
-                      Flexible(
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: mainContentMaxHeight,
+                      Expanded(
+                        flex: tinyHeight ? 6 : 7,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: _NowPlayingPanel(
+                                song: song,
+                                metadataLine: metadataLine,
+                                artworkSize: artworkSize,
+                                compact: compactHeight,
+                                tiny: tinyHeight,
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: 5,
-                                  child: _NowPlayingPanel(
-                                    song: song,
-                                    metadataLine: metadataLine,
-                                    artworkSize: artworkSize,
-                                    compact: compactHeight,
-                                    tiny: tinyHeight,
-                                  ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              flex: 6,
+                              child: _ImmersiveLyrics(
+                                key: ValueKey(
+                                  'lyrics-${_songContentKey(song)}',
                                 ),
-                                const SizedBox(width: 24),
-                                Expanded(
-                                  flex: 6,
-                                  child: _ImmersiveLyrics(
-                                    key: ValueKey(
-                                      'lyrics-${_songContentKey(song)}',
-                                    ),
-                                    song: song,
-                                    positionStream:
-                                        audioController.positionStream,
-                                    initialPosition:
-                                        audioController.currentPosition,
-                                    canManageLyrics:
-                                        onLyricsOffsetChanged != null &&
-                                        onLyricsFetch != null,
-                                    onLyricsOffsetChanged:
-                                        onLyricsOffsetChanged,
-                                    onLyricsFetch: onLyricsFetch,
-                                  ),
-                                ),
-                              ],
+                                song: song,
+                                positionStream: audioController.positionStream,
+                                initialPosition:
+                                    audioController.currentPosition,
+                                canManageLyrics:
+                                    onLyricsOffsetChanged != null &&
+                                    onLyricsFetch != null,
+                                onLyricsOffsetChanged: onLyricsOffsetChanged,
+                                onLyricsFetch: onLyricsFetch,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: tinyHeight ? 8 : 18),
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 980),
-                          child: Container(
-                            padding: EdgeInsets.fromLTRB(
-                              18,
-                              tinyHeight ? 8 : 12,
-                              18,
-                              tinyHeight ? 10 : 14,
+                      SizedBox(height: tinyHeight ? 10 : 16),
+                      Flexible(
+                        flex: tinyHeight ? 3 : 2,
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: 980,
+                              maxHeight: 150,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .76),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: .78),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: kInk.withValues(alpha: .07),
-                                  blurRadius: 34,
-                                  offset: const Offset(0, 18),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                _Progress(
-                                  song: song,
-                                  audioController: audioController,
-                                  onSeek: onSeek,
-                                ),
-                                SizedBox(height: tinyHeight ? 8 : 12),
-                                SizedBox(
-                                  height: 68,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: SizedBox(
-                                          width: 132,
-                                          child: Row(
-                                            children: [
-                                              _GlassIconButton(
-                                                icon: song.isFavorite
-                                                    ? Icons.favorite_rounded
-                                                    : Icons
-                                                          .favorite_border_rounded,
-                                                onTap: () =>
-                                                    onFavoriteToggle(song),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              _GlassIconButton(
-                                                icon: downloaded
-                                                    ? Icons
-                                                          .download_done_rounded
-                                                    : Icons.download_rounded,
-                                                onTap: downloaded
-                                                    ? null
-                                                    : () => _downloadSong(
-                                                        context,
-                                                      ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Center(
-                                        child: _Controls(
-                                          big: true,
-                                          audioController: audioController,
-                                          isLoading: isLoading,
-                                          onTogglePlay: onTogglePlay,
-                                          onNext: onNext,
-                                          onPrevious: onPrevious,
-                                          playbackMode: playbackMode,
-                                          onPlaybackModeChanged:
-                                              onPlaybackModeChanged,
-                                        ),
-                                      ),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: SizedBox(
-                                          width: 132,
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: _GlassIconButton(
-                                              icon: Icons.queue_music_rounded,
-                                              onTap: () => _openQueue(context),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            child: _DesktopControlPanel(
+                              song: song,
+                              audioController: audioController,
+                              tinyHeight: tinyHeight,
+                              downloaded: downloaded,
+                              isLoading: isLoading,
+                              playbackMode: playbackMode,
+                              onSeek: onSeek,
+                              onFavoriteToggle: onFavoriteToggle,
+                              onDownload: () => _downloadSong(context),
+                              onTogglePlay: onTogglePlay,
+                              onNext: onNext,
+                              onPrevious: onPrevious,
+                              onPlaybackModeChanged: onPlaybackModeChanged,
+                              onOpenQueue: () => _openQueue(context),
                             ),
                           ),
                         ),
@@ -588,6 +502,125 @@ class PlayerPage extends StatelessWidget {
         );
       }
     }
+  }
+}
+
+class _DesktopControlPanel extends StatelessWidget {
+  const _DesktopControlPanel({
+    required this.song,
+    required this.audioController,
+    required this.tinyHeight,
+    required this.downloaded,
+    required this.isLoading,
+    required this.playbackMode,
+    required this.onSeek,
+    required this.onFavoriteToggle,
+    required this.onDownload,
+    required this.onTogglePlay,
+    required this.onNext,
+    required this.onPrevious,
+    required this.onPlaybackModeChanged,
+    required this.onOpenQueue,
+  });
+
+  final Song song;
+  final MusicAudioController audioController;
+  final bool tinyHeight;
+  final bool downloaded;
+  final bool isLoading;
+  final PlaybackMode playbackMode;
+  final Future<void> Function(Duration position) onSeek;
+  final Future<Song> Function(Song song) onFavoriteToggle;
+  final VoidCallback onDownload;
+  final VoidCallback onTogglePlay;
+  final VoidCallback onNext;
+  final VoidCallback onPrevious;
+  final VoidCallback onPlaybackModeChanged;
+  final VoidCallback onOpenQueue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(18, tinyHeight ? 8 : 12, 18, 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .76),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withValues(alpha: .78)),
+        boxShadow: [
+          BoxShadow(
+            color: kInk.withValues(alpha: .07),
+            blurRadius: 34,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _Progress(
+            song: song,
+            audioController: audioController,
+            onSeek: onSeek,
+          ),
+          SizedBox(height: tinyHeight ? 8 : 12),
+          SizedBox(
+            height: 68,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: 132,
+                    child: Row(
+                      children: [
+                        _GlassIconButton(
+                          icon: song.isFavorite
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          onTap: () => onFavoriteToggle(song),
+                        ),
+                        const SizedBox(width: 12),
+                        _GlassIconButton(
+                          icon: downloaded
+                              ? Icons.download_done_rounded
+                              : Icons.download_rounded,
+                          onTap: downloaded ? null : onDownload,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Center(
+                  child: _Controls(
+                    big: true,
+                    audioController: audioController,
+                    isLoading: isLoading,
+                    onTogglePlay: onTogglePlay,
+                    onNext: onNext,
+                    onPrevious: onPrevious,
+                    playbackMode: playbackMode,
+                    onPlaybackModeChanged: onPlaybackModeChanged,
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 132,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _GlassIconButton(
+                        icon: Icons.queue_music_rounded,
+                        onTap: onOpenQueue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
