@@ -404,16 +404,7 @@ class PlayerPage extends StatelessWidget {
                                       ),
                                       Align(
                                         alignment: Alignment.centerRight,
-                                        child: SizedBox(
-                                          width: 132,
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: _GlassIconButton(
-                                              icon: Icons.queue_music_rounded,
-                                              onTap: () => _openQueue(context),
-                                            ),
-                                          ),
-                                        ),
+                                        child: const SizedBox(width: 132),
                                       ),
                                     ],
                                   ),
