@@ -1376,7 +1376,6 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
   int _lastIndex = -2;
   int _scrollRequest = 0;
   bool _hasPositionedInitialLyric = false;
-  bool _routeWasCovered = false;
   bool _savingOffset = false;
   bool _fetchingLyrics = false;
   String? _lyricsMessage;
@@ -1391,7 +1390,6 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
     if (_songContentKey(oldWidget.song) != _songContentKey(widget.song)) {
       _lastIndex = -2;
       _hasPositionedInitialLyric = false;
-      _routeWasCovered = false;
       if (_controller.hasClients) {
         _controller.jumpTo(0);
       }
@@ -1651,11 +1649,6 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                 : StreamBuilder<Duration>(
                     stream: widget.positionStream,
                     builder: (context, snapshot) {
-                      final routeVisible =
-                          ModalRoute.of(context)?.isCurrent ?? true;
-                      if (!routeVisible) {
-                        _routeWasCovered = true;
-                      }
                       final adjustedPosition =
                           (snapshot.data ?? adjustedInitialPosition) +
                           (snapshot.hasData ? offsetDuration : Duration.zero);
@@ -1668,37 +1661,8 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                       }
                       return LayoutBuilder(
                         builder: (context, constraints) {
-                          if (!routeVisible) {
-                            return ListView.builder(
-                              controller: _controller,
-                              physics: const BouncingScrollPhysics(),
-                              padding: EdgeInsets.symmetric(
-                                vertical: _lyricVerticalPadding(
-                                  constraints.maxHeight,
-                                ),
-                              ),
-                              itemExtent: _lyricRowExtent,
-                              itemCount: timedLines.length,
-                              itemBuilder: (context, index) {
-                                final lyricIndex = index;
-                                final active = lyricIndex == current;
-                                final distance = (lyricIndex - current).abs();
-                                final intro = hasIntroLine && lyricIndex == 0;
-                                return Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _LyricLineText(
-                                    active: active,
-                                    distance: distance,
-                                    intro: intro,
-                                    text: timedLines[lyricIndex].text,
-                                    animated: false,
-                                  ),
-                                );
-                              },
-                            );
-                          }
                           final suppressLyricAnimations =
-                              !_hasPositionedInitialLyric || _routeWasCovered;
+                              !_hasPositionedInitialLyric;
                           if (suppressLyricAnimations) {
                             final initialOffset = _targetOffsetForLyric(
                               index: current,
@@ -1715,7 +1679,6 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                             }
                             _lastIndex = current;
                             _hasPositionedInitialLyric = true;
-                            _routeWasCovered = false;
                           } else if (current != _lastIndex) {
                             _lastIndex = current;
                             _scrollToLyric(
