@@ -15,13 +15,13 @@
     {
       "platform": "windows",
       "channel": "stable",
-      "version": "1.0.16",
-      "buildNumber": 17,
-      "releaseNotes": "优化 Windows 桌面体验，关闭窗口时最小化到系统托盘，并完善应用内自动更新安装后的重启流程。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.16+17.exe",
-      "fileName": "MusicFlow-Setup-1.0.16+17.exe",
-      "fileSize": 11600462,
-      "sha256": "05c0053712eaf17892623c2e5032af2b616379db4f3319e7e1d4c2afe89482d5",
+      "version": "1.0.17",
+      "buildNumber": 18,
+      "releaseNotes": "修复 Windows 关闭窗口后台运行逻辑，并优化桌面端账号安全卡片两列布局显示。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.17+18.exe",
+      "fileName": "MusicFlow-Setup-1.0.17+18.exe",
+      "fileSize": 11596195,
+      "sha256": "ae8a865abd7b18c0fcfde69c0257499b82e2ffb0824bfe06c4bc0e8e799a0801",
       "mandatory": false
     }
   ]
