@@ -1691,12 +1691,15 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                                     distance: distance,
                                     intro: intro,
                                     text: timedLines[lyricIndex].text,
+                                    animated: false,
                                   ),
                                 );
                               },
                             );
                           }
-                          if (!_hasPositionedInitialLyric || _routeWasCovered) {
+                          final suppressLyricAnimations =
+                              !_hasPositionedInitialLyric || _routeWasCovered;
+                          if (suppressLyricAnimations) {
                             final initialOffset = _targetOffsetForLyric(
                               index: current,
                               viewport: constraints.maxHeight,
@@ -1743,6 +1746,7 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                                   distance: distance,
                                   intro: intro,
                                   text: timedLines[lyricIndex].text,
+                                  animated: !suppressLyricAnimations,
                                 ),
                               );
                             },
@@ -1764,17 +1768,19 @@ class _LyricLineText extends StatelessWidget {
     required this.distance,
     required this.intro,
     required this.text,
+    required this.animated,
   });
 
   final bool active;
   final int distance;
   final bool intro;
   final String text;
+  final bool animated;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedDefaultTextStyle(
-      duration: const Duration(milliseconds: 220),
+      duration: animated ? const Duration(milliseconds: 220) : Duration.zero,
       curve: Curves.easeOutCubic,
       style: Theme.of(context).textTheme.titleMedium!.copyWith(
         color: active
