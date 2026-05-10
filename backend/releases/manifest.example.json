@@ -15,13 +15,13 @@
     {
       "platform": "windows",
       "channel": "stable",
-      "version": "1.0.15",
-      "buildNumber": 16,
-      "releaseNotes": "发布 Windows 桌面安装包，支持曲库管理、播放、下载与应用内更新。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.15+16.exe",
-      "fileName": "MusicFlow-Setup-1.0.15+16.exe",
-      "fileSize": 11565114,
-      "sha256": "98e1c38a843edb1fad0df3a9703bcd465b7eee3b85a7437cf5d43fba05966e6e",
+      "version": "1.0.16",
+      "buildNumber": 17,
+      "releaseNotes": "优化 Windows 桌面体验，关闭窗口时最小化到系统托盘，并完善应用内自动更新安装后的重启流程。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.16+17.exe",
+      "fileName": "MusicFlow-Setup-1.0.16+17.exe",
+      "fileSize": 11600462,
+      "sha256": "05c0053712eaf17892623c2e5032af2b616379db4f3319e7e1d4c2afe89482d5",
       "mandatory": false
     }
   ]
