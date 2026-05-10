@@ -1195,7 +1195,7 @@ class _DesktopCards extends StatelessWidget {
         final crossAxisCount = constraints.maxWidth > 980 ? 3 : 2;
         final childAspectRatio = crossAxisCount == 3
             ? (constraints.maxWidth < 1160 ? 1.24 : 1.38)
-            : 1.26;
+            : (constraints.maxWidth > 760 ? 1.72 : 1.56);
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
