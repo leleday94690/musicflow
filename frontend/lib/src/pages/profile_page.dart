@@ -1193,29 +1193,29 @@ class _DesktopCards extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 980 ? 3 : 2;
-        final childAspectRatio = crossAxisCount == 3
-            ? (constraints.maxWidth < 1160 ? 1.24 : 1.38)
-            : (constraints.maxWidth > 760 ? 1.72 : 1.56);
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          childAspectRatio: childAspectRatio,
-          crossAxisSpacing: 14,
-          mainAxisSpacing: 14,
+        const spacing = 14.0;
+        final cardWidth =
+            (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+            crossAxisCount;
+        final cards = [
+          _FavoritesCard(
+            songs: overview.favorites,
+            onActionTap: onOpenFavoriteMusic,
+          ),
+          _RecentCard(items: overview.recent, onActionTap: onOpenRecentPlays),
+          _DownloadsCard(
+            tasks: overview.downloads,
+            onActionTap: onOpenDownloadManagement,
+          ),
+          _StorageCard(user: overview.user),
+          _ThemeCard(),
+          _SecurityCard(onLogout: onLogout),
+        ];
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
           children: [
-            _FavoritesCard(
-              songs: overview.favorites,
-              onActionTap: onOpenFavoriteMusic,
-            ),
-            _RecentCard(items: overview.recent, onActionTap: onOpenRecentPlays),
-            _DownloadsCard(
-              tasks: overview.downloads,
-              onActionTap: onOpenDownloadManagement,
-            ),
-            _StorageCard(user: overview.user),
-            _ThemeCard(),
-            _SecurityCard(onLogout: onLogout),
+            for (final card in cards) SizedBox(width: cardWidth, child: card),
           ],
         );
       },
