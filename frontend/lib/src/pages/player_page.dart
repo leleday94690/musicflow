@@ -244,13 +244,13 @@ class PlayerPage extends StatelessWidget {
                     ? 170.0
                     : compactHeight
                     ? 220.0
-                    : 250.0;
+                    : 260.0;
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                     34,
                     tinyHeight ? 12 : 18,
                     34,
-                    tinyHeight ? 18 : 28,
+                    tinyHeight ? 14 : 24,
                   ),
                   child: Column(
                     children: [
@@ -271,7 +271,6 @@ class PlayerPage extends StatelessWidget {
                       ),
                       SizedBox(height: tinyHeight ? 8 : 18),
                       Expanded(
-                        flex: tinyHeight ? 6 : 7,
                         child: Row(
                           children: [
                             Expanded(
@@ -305,32 +304,25 @@ class PlayerPage extends StatelessWidget {
                           ],
                         ),
                       ),
-                      SizedBox(height: tinyHeight ? 10 : 16),
-                      Flexible(
-                        flex: tinyHeight ? 3 : 2,
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: 980,
-                              maxHeight: 150,
-                            ),
-                            child: _DesktopControlPanel(
-                              song: song,
-                              audioController: audioController,
-                              tinyHeight: tinyHeight,
-                              downloaded: downloaded,
-                              isLoading: isLoading,
-                              playbackMode: playbackMode,
-                              onSeek: onSeek,
-                              onFavoriteToggle: onFavoriteToggle,
-                              onDownload: () => _downloadSong(context),
-                              onTogglePlay: onTogglePlay,
-                              onNext: onNext,
-                              onPrevious: onPrevious,
-                              onPlaybackModeChanged: onPlaybackModeChanged,
-                              onOpenQueue: () => _openQueue(context),
-                            ),
+                      SizedBox(height: tinyHeight ? 8 : 18),
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 980),
+                          child: _DesktopControlPanel(
+                            song: song,
+                            audioController: audioController,
+                            tinyHeight: tinyHeight,
+                            downloaded: downloaded,
+                            isLoading: isLoading,
+                            playbackMode: playbackMode,
+                            onSeek: onSeek,
+                            onFavoriteToggle: onFavoriteToggle,
+                            onDownload: () => _downloadSong(context),
+                            onTogglePlay: onTogglePlay,
+                            onNext: onNext,
+                            onPrevious: onPrevious,
+                            onPlaybackModeChanged: onPlaybackModeChanged,
+                            onOpenQueue: () => _openQueue(context),
                           ),
                         ),
                       ),
