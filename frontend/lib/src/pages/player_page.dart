@@ -245,12 +245,17 @@ class PlayerPage extends StatelessWidget {
                     : compactHeight
                     ? 220.0
                     : 260.0;
+                final mainContentMaxHeight = tinyHeight
+                    ? 310.0
+                    : compactHeight
+                    ? 360.0
+                    : 420.0;
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                     34,
                     tinyHeight ? 12 : 18,
                     34,
-                    tinyHeight ? 14 : 24,
+                    tinyHeight ? 22 : 30,
                   ),
                   child: Column(
                     children: [
@@ -270,38 +275,47 @@ class PlayerPage extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: tinyHeight ? 8 : 18),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 5,
-                              child: _NowPlayingPanel(
-                                song: song,
-                                metadataLine: metadataLine,
-                                artworkSize: artworkSize,
-                                compact: compactHeight,
-                                tiny: tinyHeight,
-                              ),
+                      Flexible(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: mainContentMaxHeight,
                             ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 6,
-                              child: _ImmersiveLyrics(
-                                key: ValueKey(
-                                  'lyrics-${_songContentKey(song)}',
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 5,
+                                  child: _NowPlayingPanel(
+                                    song: song,
+                                    metadataLine: metadataLine,
+                                    artworkSize: artworkSize,
+                                    compact: compactHeight,
+                                    tiny: tinyHeight,
+                                  ),
                                 ),
-                                song: song,
-                                positionStream: audioController.positionStream,
-                                initialPosition:
-                                    audioController.currentPosition,
-                                canManageLyrics:
-                                    onLyricsOffsetChanged != null &&
-                                    onLyricsFetch != null,
-                                onLyricsOffsetChanged: onLyricsOffsetChanged,
-                                onLyricsFetch: onLyricsFetch,
-                              ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  flex: 6,
+                                  child: _ImmersiveLyrics(
+                                    key: ValueKey(
+                                      'lyrics-${_songContentKey(song)}',
+                                    ),
+                                    song: song,
+                                    positionStream:
+                                        audioController.positionStream,
+                                    initialPosition:
+                                        audioController.currentPosition,
+                                    canManageLyrics:
+                                        onLyricsOffsetChanged != null &&
+                                        onLyricsFetch != null,
+                                    onLyricsOffsetChanged:
+                                        onLyricsOffsetChanged,
+                                    onLyricsFetch: onLyricsFetch,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                       SizedBox(height: tinyHeight ? 8 : 18),
