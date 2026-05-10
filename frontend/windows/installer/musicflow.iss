@@ -33,10 +33,6 @@ PrivilegesRequired=lowest
 SetupIconFile={#SourcePath}\..\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
-[Languages]
-Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
-
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务："; Flags: unchecked
 
