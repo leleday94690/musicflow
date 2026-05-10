@@ -721,7 +721,7 @@ class _QueueSheetState extends State<_QueueSheet> {
     }
     Scrollable.ensureVisible(
       context,
-      duration: const Duration(milliseconds: 260),
+      duration: Duration.zero,
       curve: Curves.easeOutCubic,
       alignment: .35,
     );
@@ -1375,6 +1375,7 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
   final _controller = ScrollController();
   int _lastIndex = -2;
   int _scrollRequest = 0;
+  bool _hasPositionedInitialLyric = false;
   bool _savingOffset = false;
   bool _fetchingLyrics = false;
   String? _lyricsMessage;
@@ -1388,13 +1389,14 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
     super.didUpdateWidget(oldWidget);
     if (_songContentKey(oldWidget.song) != _songContentKey(widget.song)) {
       _lastIndex = -2;
+      _hasPositionedInitialLyric = false;
       if (_controller.hasClients) {
         _controller.jumpTo(0);
       }
     }
   }
 
-  void _scrollToLyric(int index, {int retry = 0}) {
+  void _scrollToLyric(int index, {required bool animated, int retry = 0}) {
     final request = ++_scrollRequest;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || request != _scrollRequest) {
@@ -1402,14 +1404,14 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
       }
       if (!_controller.hasClients) {
         if (retry < 3) {
-          _scrollToLyric(index, retry: retry + 1);
+          _scrollToLyric(index, animated: animated, retry: retry + 1);
         }
         return;
       }
       final position = _controller.position;
       if (!position.hasContentDimensions) {
         if (retry < 3) {
-          _scrollToLyric(index, retry: retry + 1);
+          _scrollToLyric(index, animated: animated, retry: retry + 1);
         }
         return;
       }
@@ -1421,7 +1423,7 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
         0.0,
         position.maxScrollExtent,
       );
-      if (retry == 0) {
+      if (animated) {
         unawaited(
           _controller.animateTo(
             target,
@@ -1625,8 +1627,10 @@ class _ImmersiveLyricsState extends State<_ImmersiveLyrics> {
                         current = 0;
                       }
                       if (current != _lastIndex) {
+                        final shouldAnimate = _hasPositionedInitialLyric;
                         _lastIndex = current;
-                        _scrollToLyric(current);
+                        _hasPositionedInitialLyric = true;
+                        _scrollToLyric(current, animated: shouldAnimate);
                       }
                       return LayoutBuilder(
                         builder: (context, constraints) {
