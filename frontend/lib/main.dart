@@ -8,11 +8,13 @@ import 'package:window_manager/window_manager.dart';
 import 'src/app.dart';
 
 final _desktopWindowController = _DesktopWindowController();
+final GlobalKey<NavigatorState> musicFlowNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureDesktopWindow();
-  runApp(const MusicFlowApp());
+  runApp(MusicFlowApp(navigatorKey: musicFlowNavigatorKey));
 }
 
 Future<void> _configureDesktopWindow() async {
@@ -50,6 +52,8 @@ Future<void> _configureDesktopWindow() async {
 
 class _DesktopWindowController with WindowListener, TrayListener {
   var _isQuitting = false;
+  var _hideNoticeShowing = false;
+  var _hideNoticeShown = false;
 
   Future<void> initialize() async {
     await windowManager.setPreventClose(true);
@@ -84,6 +88,16 @@ class _DesktopWindowController with WindowListener, TrayListener {
       await windowManager.destroy();
       return;
     }
+    if (!_hideNoticeShown) {
+      if (_hideNoticeShowing) {
+        return;
+      }
+      final shouldHide = await _showHideNotice();
+      if (!shouldHide) {
+        return;
+      }
+      _hideNoticeShown = true;
+    }
     await windowManager.hide();
   }
 
@@ -112,5 +126,37 @@ class _DesktopWindowController with WindowListener, TrayListener {
   Future<void> _showWindow() async {
     await windowManager.show();
     await windowManager.focus();
+  }
+
+  Future<bool> _showHideNotice() async {
+    final context = musicFlowNavigatorKey.currentContext;
+    if (context == null) {
+      return true;
+    }
+    _hideNoticeShowing = true;
+    try {
+      final shouldHide = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('关闭后继续后台运行'),
+          content: const Text('点击关闭按钮会隐藏到系统托盘。你可以点击托盘图标恢复窗口，或在托盘菜单中选择退出。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              label: const Text('后台运行'),
+            ),
+          ],
+        ),
+      );
+      return shouldHide ?? false;
+    } finally {
+      _hideNoticeShowing = false;
+    }
   }
 }

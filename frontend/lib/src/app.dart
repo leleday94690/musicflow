@@ -27,11 +27,14 @@ import 'widgets/player_bar.dart';
 import 'widgets/request_loading.dart';
 
 class MusicFlowApp extends StatelessWidget {
-  const MusicFlowApp({super.key});
+  const MusicFlowApp({super.key, this.navigatorKey});
+
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'MusicFlow',
       debugShowCheckedModeBanner: false,
       theme: buildMusicTheme(),
