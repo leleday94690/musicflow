@@ -12,6 +12,7 @@ import '../widgets/playback_mode_feedback.dart';
 typedef QueueSongAction = void Function(Song song, List<Song> queue);
 typedef QueueReorderAction =
     void Function(List<Song> queue, int oldIndex, int newIndex);
+typedef QueueLoadMoreAction = Future<List<Song>> Function();
 typedef LyricsOffsetAction = Future<Song> Function(Song song, int offsetMs);
 typedef SongAsyncAction = Future<Song> Function(Song song);
 
@@ -19,6 +20,11 @@ void showPlaybackQueueSheet(
   BuildContext context, {
   required Song currentSong,
   required List<Song> queue,
+  bool queueLoading = false,
+  bool queueHasMore = false,
+  bool queueLoadingMore = false,
+  int? queueTotalCount,
+  QueueLoadMoreAction? onQueueLoadMore,
   required SongTapCallback onSongTap,
   required Future<Song> Function(Song song) onFavoriteToggle,
   required QueueSongAction onQueueRemove,
@@ -34,6 +40,11 @@ void showPlaybackQueueSheet(
     builder: (context) => _QueueSheet(
       queue: playbackQueue,
       currentSong: currentSong,
+      queueLoading: queueLoading,
+      queueHasMore: queueHasMore,
+      queueLoadingMore: queueLoadingMore,
+      queueTotalCount: queueTotalCount,
+      onQueueLoadMore: onQueueLoadMore,
       onSongTap: onSongTap,
       onFavoriteToggle: onFavoriteToggle,
       onQueueRemove: onQueueRemove,
@@ -78,11 +89,17 @@ class PlayerPage extends StatelessWidget {
     super.key,
     required this.song,
     required this.queue,
+    this.queueHasMore = false,
+    this.queueLoadingMore = false,
+    this.queueTotalCount,
+    this.onQueueLoadMore,
     required this.onSongTap,
     required this.onFavoriteToggle,
     this.onSongEdit,
     required this.audioController,
     required this.isLoading,
+    this.detailsPending = false,
+    this.detailsLoading = false,
     required this.onTogglePlay,
     required this.onSeek,
     required this.onNext,
@@ -101,11 +118,17 @@ class PlayerPage extends StatelessWidget {
 
   final Song song;
   final List<Song> queue;
+  final bool queueHasMore;
+  final bool queueLoadingMore;
+  final int? queueTotalCount;
+  final QueueLoadMoreAction? onQueueLoadMore;
   final SongTapCallback onSongTap;
   final Future<Song> Function(Song song) onFavoriteToggle;
   final ValueChanged<Song>? onSongEdit;
   final MusicAudioController audioController;
   final bool isLoading;
+  final bool detailsPending;
+  final bool detailsLoading;
   final VoidCallback onTogglePlay;
   final Future<void> Function(Duration position) onSeek;
   final VoidCallback onNext;
@@ -128,104 +151,119 @@ class PlayerPage extends StatelessWidget {
     if (isMobile) {
       return Scaffold(
         backgroundColor: kScaffold,
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
-            children: [
-              Row(
+        body: Stack(
+          children: [
+            SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '正在播放',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      const SizedBox(width: 48),
+                    ],
                   ),
-                  const Spacer(),
-                  Text('正在播放', style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
-                  const SizedBox(width: 48),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Center(child: Artwork(song: song, size: 320, radius: 18)),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 18),
+                  if (detailsLoading)
+                    const _MobilePlayerSkeletonContent()
+                  else if (detailsPending)
+                    const SizedBox(height: 620)
+                  else ...[
+                    Center(child: Artwork(song: song, size: 320, radius: 18)),
+                    const SizedBox(height: 24),
+                    Row(
                       children: [
-                        Text(
-                          song.title,
-                          style: Theme.of(context).textTheme.titleLarge,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                song.title,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              Text(
+                                song.artist,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
-                          song.artist,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                        IconButton(
+                          onPressed: () => onFavoriteToggle(song),
+                          icon: Icon(
+                            song.isFavorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: kAccent,
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        IconButton(
+                          onPressed: () => _showSongInfo(context),
+                          icon: const Icon(Icons.more_horiz_rounded),
                         ),
                       ],
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => onFavoriteToggle(song),
-                    icon: Icon(
-                      song.isFavorite
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: kAccent,
+                    const SizedBox(height: 24),
+                    _Lyrics(song: song, centered: true),
+                    const SizedBox(height: 20),
+                    _Progress(
+                      song: song,
+                      audioController: audioController,
+                      onSeek: onSeek,
                     ),
-                  ),
-                  const SizedBox(width: 18),
-                  IconButton(
-                    onPressed: () => _showSongInfo(context),
-                    icon: const Icon(Icons.more_horiz_rounded),
-                  ),
+                    const SizedBox(height: 18),
+                    _Controls(
+                      big: true,
+                      audioController: audioController,
+                      isLoading: isLoading,
+                      onTogglePlay: onTogglePlay,
+                      onNext: onNext,
+                      onPrevious: onPrevious,
+                      playbackMode: playbackMode,
+                      onPlaybackModeChanged: onPlaybackModeChanged,
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _Action(
+                          icon: _modeIcon(playbackMode),
+                          label: _modeLabel(playbackMode),
+                          active: playbackMode != PlaybackMode.sequential,
+                          onTap: onPlaybackModeChanged,
+                        ),
+                        _Action(
+                          icon: downloaded
+                              ? Icons.download_done_rounded
+                              : Icons.download_rounded,
+                          label: downloaded ? '已下载' : '下载',
+                          active: downloaded,
+                          onTap: downloaded
+                              ? null
+                              : () => _downloadSong(context),
+                        ),
+                        _Action(
+                          icon: Icons.queue_music_rounded,
+                          label: '播放列表',
+                          onTap: () => _openQueue(context),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 24),
-              _Lyrics(song: song, centered: true),
-              const SizedBox(height: 20),
-              _Progress(
-                song: song,
-                audioController: audioController,
-                onSeek: onSeek,
-              ),
-              const SizedBox(height: 18),
-              _Controls(
-                big: true,
-                audioController: audioController,
-                isLoading: isLoading,
-                onTogglePlay: onTogglePlay,
-                onNext: onNext,
-                onPrevious: onPrevious,
-                playbackMode: playbackMode,
-                onPlaybackModeChanged: onPlaybackModeChanged,
-              ),
-              const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _Action(
-                    icon: _modeIcon(playbackMode),
-                    label: _modeLabel(playbackMode),
-                    active: playbackMode != PlaybackMode.sequential,
-                    onTap: onPlaybackModeChanged,
-                  ),
-                  _Action(
-                    icon: downloaded
-                        ? Icons.download_done_rounded
-                        : Icons.download_rounded,
-                    label: downloaded ? '已下载' : '下载',
-                    active: downloaded,
-                    onTap: downloaded ? null : () => _downloadSong(context),
-                  ),
-                  _Action(
-                    icon: Icons.queue_music_rounded,
-                    label: '播放列表',
-                    onTap: () => _openQueue(context),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -271,56 +309,79 @@ class PlayerPage extends StatelessWidget {
                       ),
                       SizedBox(height: tinyHeight ? 8 : 18),
                       Expanded(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 5,
-                              child: _NowPlayingPanel(
-                                song: song,
-                                metadataLine: metadataLine,
-                                artworkSize: artworkSize,
-                                compact: compactHeight,
-                                tiny: tinyHeight,
+                        child: detailsLoading
+                            ? const Row(
+                                children: [
+                                  Expanded(
+                                    flex: 5,
+                                    child: _DesktopNowPlayingSkeleton(),
+                                  ),
+                                  SizedBox(width: 24),
+                                  Expanded(
+                                    flex: 6,
+                                    child: _DesktopLyricsSkeleton(),
+                                  ),
+                                ],
+                              )
+                            : detailsPending
+                            ? const SizedBox.shrink()
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    flex: 5,
+                                    child: _NowPlayingPanel(
+                                      song: song,
+                                      metadataLine: metadataLine,
+                                      artworkSize: artworkSize,
+                                      compact: compactHeight,
+                                      tiny: tinyHeight,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Expanded(
+                                    flex: 6,
+                                    child: _ImmersiveLyrics(
+                                      key: ValueKey(
+                                        'lyrics-${_songContentKey(song)}',
+                                      ),
+                                      song: song,
+                                      positionStream:
+                                          audioController.positionStream,
+                                      initialPosition:
+                                          audioController.currentPosition,
+                                      canManageLyrics:
+                                          onLyricsOffsetChanged != null &&
+                                          onLyricsFetch != null,
+                                      onLyricsOffsetChanged:
+                                          onLyricsOffsetChanged,
+                                      onLyricsFetch: onLyricsFetch,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 6,
-                              child: _ImmersiveLyrics(
-                                key: ValueKey(
-                                  'lyrics-${_songContentKey(song)}',
-                                ),
-                                song: song,
-                                positionStream: audioController.positionStream,
-                                initialPosition:
-                                    audioController.currentPosition,
-                                canManageLyrics:
-                                    onLyricsOffsetChanged != null &&
-                                    onLyricsFetch != null,
-                                onLyricsOffsetChanged: onLyricsOffsetChanged,
-                                onLyricsFetch: onLyricsFetch,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                       SizedBox(height: tinyHeight ? 8 : 18),
-                      _DesktopControlPanel(
-                        song: song,
-                        audioController: audioController,
-                        tinyHeight: tinyHeight,
-                        downloaded: downloaded,
-                        isLoading: isLoading,
-                        playbackMode: playbackMode,
-                        onSeek: onSeek,
-                        onFavoriteToggle: onFavoriteToggle,
-                        onDownload: () => _downloadSong(context),
-                        onTogglePlay: onTogglePlay,
-                        onNext: onNext,
-                        onPrevious: onPrevious,
-                        onPlaybackModeChanged: onPlaybackModeChanged,
-                        onOpenQueue: () => _openQueue(context),
-                      ),
+                      if (detailsLoading)
+                        const _DesktopControlSkeleton()
+                      else if (detailsPending)
+                        const SizedBox(height: 120)
+                      else
+                        _DesktopControlPanel(
+                          song: song,
+                          audioController: audioController,
+                          tinyHeight: tinyHeight,
+                          downloaded: downloaded,
+                          isLoading: isLoading,
+                          playbackMode: playbackMode,
+                          onSeek: onSeek,
+                          onFavoriteToggle: onFavoriteToggle,
+                          onDownload: () => _downloadSong(context),
+                          onTogglePlay: onTogglePlay,
+                          onNext: onNext,
+                          onPrevious: onPrevious,
+                          onPlaybackModeChanged: onPlaybackModeChanged,
+                          onOpenQueue: () => _openQueue(context),
+                        ),
                     ],
                   ),
                 );
@@ -463,6 +524,10 @@ class PlayerPage extends StatelessWidget {
       context,
       currentSong: song,
       queue: queue,
+      queueHasMore: queueHasMore,
+      queueLoadingMore: queueLoadingMore,
+      queueTotalCount: queueTotalCount,
+      onQueueLoadMore: onQueueLoadMore,
       onSongTap: onSongTap,
       onFavoriteToggle: onFavoriteToggle,
       onQueueRemove: onQueueRemove,
@@ -611,6 +676,258 @@ class _DesktopControlPanel extends StatelessWidget {
   }
 }
 
+class _MobilePlayerSkeletonContent extends StatelessWidget {
+  const _MobilePlayerSkeletonContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _SkeletonFadeIn(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(child: _SkeletonBlock(width: 300, height: 300, radius: 18)),
+          SizedBox(height: 28),
+          _SkeletonBlock(width: 210, height: 22, radius: 10),
+          SizedBox(height: 12),
+          _SkeletonBlock(width: 130, height: 14, radius: 7),
+          SizedBox(height: 32),
+          _SkeletonBlock(width: double.infinity, height: 16, radius: 8),
+          SizedBox(height: 14),
+          _SkeletonBlock(width: double.infinity, height: 16, radius: 8),
+          SizedBox(height: 14),
+          _SkeletonBlock(width: 240, height: 16, radius: 8),
+          SizedBox(height: 34),
+          _SkeletonBlock(width: double.infinity, height: 8, radius: 4),
+          SizedBox(height: 28),
+          Center(child: _SkeletonBlock(width: 220, height: 54, radius: 27)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopNowPlayingSkeleton extends StatelessWidget {
+  const _DesktopNowPlayingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SkeletonFadeIn(
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: cardDecoration(radius: 32),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _SkeletonBlock(width: 154, height: 154, radius: 30),
+            SizedBox(width: 24),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SkeletonBlock(
+                    width: double.infinity,
+                    height: 24,
+                    radius: 12,
+                  ),
+                  SizedBox(height: 10),
+                  _SkeletonBlock(width: 220, height: 22, radius: 11),
+                  SizedBox(height: 14),
+                  Row(
+                    children: [
+                      _SkeletonBlock(width: 108, height: 32, radius: 16),
+                      SizedBox(width: 8),
+                      _SkeletonBlock(width: 122, height: 32, radius: 16),
+                    ],
+                  ),
+                  SizedBox(height: 14),
+                  _SkeletonBlock(
+                    width: double.infinity,
+                    height: 40,
+                    radius: 16,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopLyricsSkeleton extends StatelessWidget {
+  const _DesktopLyricsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SkeletonFadeIn(
+      child: Container(
+        padding: const EdgeInsets.all(30),
+        decoration: cardDecoration(radius: 32),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SkeletonBlock(width: 120, height: 20, radius: 10),
+            SizedBox(height: 26),
+            _SkeletonBlock(width: double.infinity, height: 18, radius: 9),
+            SizedBox(height: 18),
+            _SkeletonBlock(width: double.infinity, height: 18, radius: 9),
+            SizedBox(height: 18),
+            _SkeletonBlock(width: 300, height: 18, radius: 9),
+            Spacer(),
+            _SkeletonBlock(width: double.infinity, height: 8, radius: 4),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopControlSkeleton extends StatelessWidget {
+  const _DesktopControlSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SkeletonFadeIn(
+      child: Container(
+        height: 120,
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .76),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white.withValues(alpha: .78)),
+          boxShadow: [
+            BoxShadow(
+              color: kInk.withValues(alpha: .07),
+              blurRadius: 34,
+              offset: const Offset(0, 18),
+            ),
+          ],
+        ),
+        child: const Column(
+          children: [
+            _SkeletonBlock(width: double.infinity, height: 8, radius: 4),
+            SizedBox(height: 18),
+            Row(
+              children: [
+                _SkeletonBlock(width: 44, height: 44, radius: 22),
+                SizedBox(width: 12),
+                _SkeletonBlock(width: 44, height: 44, radius: 22),
+                Spacer(),
+                _SkeletonBlock(width: 44, height: 44, radius: 22),
+                SizedBox(width: 14),
+                _SkeletonBlock(width: 58, height: 58, radius: 29),
+                SizedBox(width: 14),
+                _SkeletonBlock(width: 44, height: 44, radius: 22),
+                Spacer(),
+                _SkeletonBlock(width: 44, height: 44, radius: 22),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QueueSkeletonList extends StatelessWidget {
+  const _QueueSkeletonList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
+      itemCount: 8,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        return Container(
+          height: 96,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: cardDecoration(radius: 22),
+          child: const Row(
+            children: [
+              _SkeletonBlock(width: 40, height: 14, radius: 7),
+              SizedBox(width: 18),
+              _SkeletonBlock(width: 58, height: 58, radius: 14),
+              SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SkeletonBlock(width: 180, height: 16, radius: 8),
+                    SizedBox(height: 10),
+                    _SkeletonBlock(width: 112, height: 12, radius: 6),
+                  ],
+                ),
+              ),
+              _SkeletonBlock(width: 44, height: 18, radius: 9),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SkeletonFadeIn extends StatelessWidget {
+  const _SkeletonFadeIn({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 6 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({
+    required this.width,
+    required this.height,
+    required this.radius,
+  });
+
+  final double width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFE1ECF1).withValues(alpha: .86),
+            const Color(0xFFF8FCFD).withValues(alpha: .96),
+            const Color(0xFFE6F0F4).withValues(alpha: .86),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
 class _Lyrics extends StatelessWidget {
   const _Lyrics({required this.song, this.centered = false});
 
@@ -683,6 +1000,11 @@ class _QueueSheet extends StatefulWidget {
   const _QueueSheet({
     required this.queue,
     required this.currentSong,
+    this.queueLoading = false,
+    this.queueHasMore = false,
+    this.queueLoadingMore = false,
+    this.queueTotalCount,
+    this.onQueueLoadMore,
     required this.onSongTap,
     required this.onFavoriteToggle,
     required this.onQueueRemove,
@@ -693,6 +1015,11 @@ class _QueueSheet extends StatefulWidget {
 
   final List<Song> queue;
   final Song currentSong;
+  final bool queueLoading;
+  final bool queueHasMore;
+  final bool queueLoadingMore;
+  final int? queueTotalCount;
+  final QueueLoadMoreAction? onQueueLoadMore;
   final SongTapCallback onSongTap;
   final Future<Song> Function(Song song) onFavoriteToggle;
   final QueueSongAction onQueueRemove;
@@ -707,6 +1034,7 @@ class _QueueSheet extends StatefulWidget {
 class _QueueSheetState extends State<_QueueSheet> {
   final GlobalKey _currentSongKey = GlobalKey();
   late List<Song> queue = List<Song>.of(widget.queue);
+  bool loadingMore = false;
 
   @override
   void initState() {
@@ -747,56 +1075,116 @@ class _QueueSheetState extends State<_QueueSheet> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '${queue.length} 首',
+                    widget.queueTotalCount != null &&
+                            widget.queueTotalCount! > queue.length
+                        ? '${queue.length}/${widget.queueTotalCount} 首'
+                        : '${queue.length} 首',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
             ),
             Expanded(
-              child: ReorderableListView.builder(
-                buildDefaultDragHandles: false,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
-                proxyDecorator: (child, index, animation) => Material(
-                  color: Colors.transparent,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 1, end: 1.02).animate(
-                      CurvedAnimation(parent: animation, curve: Curves.easeOut),
+              child: widget.queueLoading
+                  ? const _QueueSkeletonList()
+                  : NotificationListener<ScrollNotification>(
+                      onNotification: _handleQueueScroll,
+                      child: ReorderableListView.builder(
+                        buildDefaultDragHandles: false,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
+                        proxyDecorator: (child, index, animation) => Material(
+                          color: Colors.transparent,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 1, end: 1.02).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOut,
+                              ),
+                            ),
+                            child: child,
+                          ),
+                        ),
+                        itemCount: queue.length + (_hasLoadMoreFooter ? 1 : 0),
+                        onReorder: _reorderQueue,
+                        itemBuilder: (context, index) {
+                          if (index >= queue.length) {
+                            return _QueueLoadMoreFooter(
+                              key: const ValueKey('queue-load-more-footer'),
+                              loading: loadingMore || widget.queueLoadingMore,
+                            );
+                          }
+                          final queueSong = queue[index];
+                          final selected =
+                              queueSong.id == widget.currentSong.id;
+                          return KeyedSubtree(
+                            key: selected
+                                ? _currentSongKey
+                                : ValueKey('queue-$index-${queueSong.id}'),
+                            child: _QueueSongRow(
+                              song: queueSong,
+                              index: index + 1,
+                              selected: selected,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                widget.onSongTap(queueSong, queue: queue);
+                              },
+                              onFavoriteTap: () =>
+                                  widget.onFavoriteToggle(queueSong),
+                              onPlayNext: selected
+                                  ? null
+                                  : () => _moveSongNext(queueSong),
+                              onRemove: selected
+                                  ? null
+                                  : () => _removeSong(queueSong),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                    child: child,
-                  ),
-                ),
-                itemCount: queue.length,
-                onReorder: _reorderQueue,
-                itemBuilder: (context, index) {
-                  final queueSong = queue[index];
-                  final selected = queueSong.id == widget.currentSong.id;
-                  return KeyedSubtree(
-                    key: selected
-                        ? _currentSongKey
-                        : ValueKey('queue-$index-${queueSong.id}'),
-                    child: _QueueSongRow(
-                      song: queueSong,
-                      index: index + 1,
-                      selected: selected,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        widget.onSongTap(queueSong, queue: queue);
-                      },
-                      onFavoriteTap: () => widget.onFavoriteToggle(queueSong),
-                      onPlayNext: selected
-                          ? null
-                          : () => _moveSongNext(queueSong),
-                      onRemove: selected ? null : () => _removeSong(queueSong),
-                    ),
-                  );
-                },
-              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  bool get _hasLoadMoreFooter =>
+      widget.queueHasMore || loadingMore || widget.queueLoadingMore;
+
+  bool _handleQueueScroll(ScrollNotification notification) {
+    if (notification.metrics.pixels >=
+        notification.metrics.maxScrollExtent - 360) {
+      unawaited(_loadMoreQueue());
+    }
+    return false;
+  }
+
+  Future<void> _loadMoreQueue() async {
+    final loader = widget.onQueueLoadMore;
+    if (loader == null ||
+        loadingMore ||
+        widget.queueLoadingMore ||
+        !widget.queueHasMore) {
+      return;
+    }
+    setState(() => loadingMore = true);
+    try {
+      final loaded = await loader();
+      if (!mounted || loaded.isEmpty) {
+        return;
+      }
+      final existingIds = queue.map((song) => song.id).toSet();
+      final appended = loaded
+          .where((song) => song.id != 0 && existingIds.add(song.id))
+          .toList();
+      if (appended.isNotEmpty) {
+        setState(() => queue = [...queue, ...appended]);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loadingMore = false);
+      }
+    }
   }
 
   void _clearQueue() {
@@ -829,6 +1217,9 @@ class _QueueSheetState extends State<_QueueSheet> {
   }
 
   void _reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex >= queue.length || newIndex > queue.length) {
+      return;
+    }
     final previousQueue = List<Song>.of(queue);
     var targetIndex = newIndex;
     if (oldIndex < targetIndex) {
@@ -845,6 +1236,34 @@ class _QueueSheetState extends State<_QueueSheet> {
     nextQueue.insert(targetIndex, item);
     setState(() => queue = nextQueue);
     widget.onQueueReorder(previousQueue, oldIndex, newIndex);
+  }
+}
+
+class _QueueLoadMoreFooter extends StatelessWidget {
+  const _QueueLoadMoreFooter({super.key, required this.loading});
+
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 20),
+      child: Center(
+        child: loading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              )
+            : Text(
+                '继续向下加载更多',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: kMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+      ),
+    );
   }
 }
 
@@ -1214,14 +1633,19 @@ class _NowPlayingPanel extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cappedArtworkSize = artworkSize > 154 ? 154.0 : artworkSize;
+          final panelArtworkSize = tiny
+              ? 118.0
+              : compact
+              ? 136.0
+              : cappedArtworkSize;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -1231,60 +1655,139 @@ class _NowPlayingPanel extends StatelessWidget {
                       Colors.white.withValues(alpha: .28),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(36),
+                  borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: .62),
                   ),
                 ),
-                child: Artwork(song: song, size: artworkSize, radius: 28),
+                child: Artwork(song: song, size: panelArtworkSize, radius: 22),
               ),
-              SizedBox(height: tiny ? 12 : 20),
-              Text(
-                song.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: textTheme.headlineLarge?.copyWith(
-                  color: kInk,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -.4,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                song.artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: textTheme.titleMedium?.copyWith(
-                  color: kMuted,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              if (!tiny) ...[
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
+              SizedBox(width: compact ? 18 : 24),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _InfoPill(text: '高品质 MP3'),
-                    if (song.album.isNotEmpty && !compact)
-                      _InfoPill(text: song.album),
+                    Text(
+                      song.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          (tiny
+                                  ? textTheme.titleLarge
+                                  : textTheme.headlineSmall)
+                              ?.copyWith(
+                                color: kInk,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -.25,
+                                height: 1.14,
+                              ),
+                    ),
+                    SizedBox(height: tiny ? 10 : 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (song.artist.isNotEmpty)
+                          _NowPlayingMetaPill(
+                            icon: Icons.person_rounded,
+                            text: song.artist,
+                          ),
+                        const _NowPlayingMetaPill(
+                          icon: Icons.graphic_eq_rounded,
+                          text: '高品质 MP3',
+                          accent: true,
+                        ),
+                        if (song.album.isNotEmpty && !compact)
+                          _NowPlayingMetaPill(
+                            icon: Icons.album_rounded,
+                            text: song.album,
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: tiny ? 10 : 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .34),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: .42),
+                        ),
+                      ),
+                      child: Text(
+                        metadataLine.isEmpty ? '暂无歌曲创作信息' : metadataLine,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: kMuted,
+                          fontWeight: FontWeight.w700,
+                          height: 1.38,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  metadataLine.isEmpty ? '暂无歌曲创作信息' : metadataLine,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyMedium?.copyWith(color: kMuted),
-                ),
-              ],
+              ),
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NowPlayingMetaPill extends StatelessWidget {
+  const _NowPlayingMetaPill({
+    required this.icon,
+    required this.text,
+    this.accent = false,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accent ? kAccentDark : kMuted;
+    final background = accent
+        ? kAccent.withValues(alpha: .12)
+        : Colors.white.withValues(alpha: .38);
+    final borderColor = accent
+        ? kAccent.withValues(alpha: .16)
+        : Colors.white.withValues(alpha: .46);
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 190),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .1,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

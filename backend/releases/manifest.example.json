@@ -3,13 +3,13 @@
     {
       "platform": "macos",
       "channel": "stable",
-      "version": "1.0.21",
-      "buildNumber": 22,
-      "releaseNotes": "修复 Windows 更新安装后仍运行旧版本的问题，并优化托盘退出流程，避免退出时卡住。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.21.dmg",
-      "fileName": "MusicFlow-1.0.21.dmg",
-      "fileSize": 22204255,
-      "sha256": "2079b2e06602ac45997127d30e829d7ac93911ae77e6e9de969861c76de82aed",
+      "version": "1.0.22",
+      "buildNumber": 23,
+      "releaseNotes": "优化播放详情、搜索结果与播放队列体验，支持播放队列分页加载并减少页面切换闪烁。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.22.dmg",
+      "fileName": "MusicFlow-1.0.22.dmg",
+      "fileSize": 22208410,
+      "sha256": "0952fead50068508f02ad8171c10bfd2454bb8cacce67924f9f89bf47a06d0d0",
       "mandatory": false
     },
     {

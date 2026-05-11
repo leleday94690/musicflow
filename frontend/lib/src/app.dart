@@ -269,6 +269,10 @@ class _MusicShellState extends State<MusicShell> with RouteAware {
             : PlayerPage(
                 song: currentSong!,
                 queue: playbackController.queueOr(songs),
+                queueHasMore: hasMoreSongs,
+                queueLoadingMore: isLoadingMoreSongs,
+                queueTotalCount: songTotalCount,
+                onQueueLoadMore: _loadMoreQueueSongs,
                 onSongTap: _selectSong,
                 onFavoriteToggle: _toggleFavorite,
                 onSongEdit: canManageLibrary ? _editSong : null,
@@ -1966,6 +1970,48 @@ class _MusicShellState extends State<MusicShell> with RouteAware {
     }
   }
 
+  Future<List<Song>> _loadMoreQueueSongs() async {
+    if (isLoadingMoreSongs || !hasMoreSongs) {
+      return const [];
+    }
+    setState(() => isLoadingMoreSongs = true);
+    try {
+      final page = await MusicApiClient(
+        token: authToken,
+      ).fetchSongsPage(limit: _songPageSize, cursor: songNextCursor);
+      if (!mounted) {
+        return const [];
+      }
+      libraryController.appendSongs(page.items);
+      final currentQueue = playbackController.queueOr(songs);
+      final existingIds = currentQueue.map((song) => song.id).toSet();
+      final nextQueue = [
+        ...currentQueue,
+        ...page.items.where((song) => existingIds.add(song.id)),
+      ];
+      playbackController.setQueue(nextQueue);
+      setState(() {
+        hasMoreSongs = page.hasMore;
+        songNextCursor = page.nextCursor;
+        songTotalCount = page.totalCount;
+      });
+      return page.items;
+    } catch (error) {
+      if (mounted) {
+        _showTopToast(
+          icon: Icons.error_outline_rounded,
+          message: '加载队列失败：${error.toString().replaceFirst('Exception: ', '')}',
+          destructive: true,
+        );
+      }
+      return const [];
+    } finally {
+      if (mounted) {
+        setState(() => isLoadingMoreSongs = false);
+      }
+    }
+  }
+
   Future<void> _login(String username, String password) async {
     final session = await requestLoading.track(
       () => MusicApiClient().login(username, password),
@@ -2019,27 +2065,9 @@ class _MusicShellState extends State<MusicShell> with RouteAware {
     });
   }
 
-  Future<void> _openPlayer() async {
+  void _openPlayer() {
     final initialSong = currentSong;
     if (initialSong == null) {
-      return;
-    }
-    var song = initialSong;
-    try {
-      final loadedSongs = await requestLoading.track(
-        () => MusicApiClient(token: authToken).fetchSongs(),
-      );
-      for (final item in loadedSongs) {
-        if (item.id == song.id) {
-          song = item;
-          break;
-        }
-      }
-      if (mounted) {
-        playbackController.setCurrentSong(song);
-      }
-    } catch (_) {}
-    if (!mounted) {
       return;
     }
     Navigator.of(context).push(
@@ -2047,10 +2075,14 @@ class _MusicShellState extends State<MusicShell> with RouteAware {
         pageBuilder: (_, _, _) => AnimatedBuilder(
           animation: playbackController,
           builder: (context, _) {
-            final routeSong = currentSong ?? song;
+            final routeSong = currentSong ?? initialSong;
             return PlayerPage(
               song: routeSong,
               queue: playbackController.queueOr(songs),
+              queueHasMore: hasMoreSongs,
+              queueLoadingMore: isLoadingMoreSongs,
+              queueTotalCount: songTotalCount,
+              onQueueLoadMore: _loadMoreQueueSongs,
               onSongTap: _selectSong,
               onFavoriteToggle: _toggleFavorite,
               onSongEdit: canManageLibrary ? _editSong : null,
@@ -2090,6 +2122,10 @@ class _MusicShellState extends State<MusicShell> with RouteAware {
       context,
       currentSong: song,
       queue: playbackController.queueOr(songs),
+      queueHasMore: hasMoreSongs,
+      queueLoadingMore: isLoadingMoreSongs,
+      queueTotalCount: songTotalCount,
+      onQueueLoadMore: _loadMoreQueueSongs,
       onSongTap: _selectSong,
       onFavoriteToggle: _toggleFavorite,
       onQueueRemove: _removeSongFromQueue,

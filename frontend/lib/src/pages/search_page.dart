@@ -45,11 +45,16 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   int selectedTab = 0;
   String query = '';
+  String resultKeyword = '';
   List<Song> resultSongs = [];
-  final DelayedLoadingController searchLoading = DelayedLoadingController();
+  final DelayedLoadingController searchLoading = DelayedLoadingController(
+    delay: const Duration(milliseconds: 320),
+  );
   String? errorMessage;
   Timer? _searchDebounce;
   int _searchToken = 0;
+  bool _searchPending = false;
+  DateTime? _searchLoadingVisibleAt;
 
   @override
   void initState() {
@@ -67,6 +72,12 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _handleLoadingChanged() {
+    if (searchLoading.visible && _searchLoadingVisibleAt == null) {
+      _searchLoadingVisibleAt = DateTime.now();
+    }
+    if (!searchLoading.visible) {
+      _searchLoadingVisibleAt = null;
+    }
     if (mounted) {
       setState(() {});
     }
@@ -133,17 +144,16 @@ class _SearchPageState extends State<SearchPage> {
     final keyword = value.trim();
     _searchDebounce?.cancel();
     final token = ++_searchToken;
-    if (keyword.isEmpty) {
-      searchLoading.stop();
-    } else {
-      searchLoading.start();
-    }
+    searchLoading.stop();
+    _searchLoadingVisibleAt = null;
     setState(() {
       query = keyword;
       errorMessage = null;
       if (keyword.isEmpty) {
+        resultKeyword = '';
         resultSongs = [];
       }
+      _searchPending = keyword.isNotEmpty;
     });
     if (keyword.isEmpty) {
       return;
@@ -154,6 +164,10 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _performSearch(String keyword, int token) async {
+    if (!mounted || query != keyword || token != _searchToken) {
+      return;
+    }
+    searchLoading.start();
     try {
       final data = await MusicApiClient(
         token: widget.authToken,
@@ -161,15 +175,26 @@ class _SearchPageState extends State<SearchPage> {
       if (!mounted || query != keyword || token != _searchToken) {
         return;
       }
+      await _waitForSearchLoadingToSettle(keyword, token);
+      if (!mounted || query != keyword || token != _searchToken) {
+        return;
+      }
       setState(() {
+        resultKeyword = keyword;
         resultSongs = data;
+        _searchPending = false;
       });
     } catch (error) {
       if (!mounted || query != keyword || token != _searchToken) {
         return;
       }
+      await _waitForSearchLoadingToSettle(keyword, token);
+      if (!mounted || query != keyword || token != _searchToken) {
+        return;
+      }
       setState(() {
         errorMessage = error.toString().replaceFirst('Exception: ', '');
+        _searchPending = false;
       });
     } finally {
       if (mounted && query == keyword && token == _searchToken) {
@@ -178,21 +203,35 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  Future<void> _waitForSearchLoadingToSettle(String keyword, int token) async {
+    if (!searchLoading.visible) {
+      return;
+    }
+    final shownAt = _searchLoadingVisibleAt ?? DateTime.now();
+    final remaining =
+        const Duration(milliseconds: 260) - DateTime.now().difference(shownAt);
+    if (remaining <= Duration.zero) {
+      return;
+    }
+    await Future.delayed(remaining);
+    if (!mounted || query != keyword || token != _searchToken) {
+      return;
+    }
+  }
+
   void _selectTab(int index) {
     setState(() => selectedTab = index);
   }
 
   List<Widget> _resultWidgets({bool compact = false}) {
-    final keyword = query.trim().toLowerCase();
-    if (searchLoading.visible && resultSongs.isEmpty) {
-      return const [
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: 28),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ];
+    final keyword =
+        (_searchPending && resultSongs.isNotEmpty ? resultKeyword : query)
+            .trim()
+            .toLowerCase();
+    if (_searchPending && searchLoading.visible && resultSongs.isEmpty) {
+      return const [_SearchLoadingPreview()];
     }
-    if (searchLoading.active && resultSongs.isEmpty) {
+    if (_searchPending && resultSongs.isEmpty) {
       return const [SizedBox(height: 84)];
     }
     if (errorMessage != null) {
@@ -249,51 +288,166 @@ class _SearchPageState extends State<SearchPage> {
       4 => '暂无专辑搜索结果',
       _ => '暂无搜索结果',
     };
-    return [
-      if (matchedSongs.isEmpty)
+    if (matchedSongs.isEmpty) {
+      return [
         EmptyState(
           icon: Icons.search_off_rounded,
           message: emptyMessage,
           margin: const EdgeInsets.symmetric(vertical: 18),
         ),
-      if (matchedSongs.isNotEmpty)
-        _SearchResultsToolbar(
-          compact: compact,
-          count: matchedSongs.length,
-          onPlayAll: () => widget.onQueuePlayAll(matchedSongs),
-        ),
-      for (var i = 0; i < matchedSongs.length; i++)
-        SongTile(
-          song: matchedSongs[i],
-          index: i + 1,
-          compact: compact,
-          showAlbum: !compact,
-          downloaded: downloads.any(
-            (task) => task.song.id == matchedSongs[i].id,
+      ];
+    }
+    return [
+      Column(
+        children: [
+          _SearchResultsToolbar(
+            compact: compact,
+            count: matchedSongs.length,
+            onPlayAll: () => widget.onQueuePlayAll(matchedSongs),
           ),
-          onTap: () => widget.onSongTap(matchedSongs[i], queue: matchedSongs),
-          onPlayNextTap: () => widget.onSongPlayNext(matchedSongs[i]),
-          onAddToPlaylistTap: () => widget.onSongAddToPlaylist(matchedSongs[i]),
-          onEditTap: widget.canManageLibrary
-              ? () => widget.onSongEdit(matchedSongs[i])
-              : null,
-          onFavoriteTap: () async {
-            final updated = await widget.onFavoriteToggle(matchedSongs[i]);
-            if (!context.mounted) {
-              return;
-            }
-            setState(() {
-              final index = resultSongs.indexWhere(
-                (song) => song.id == updated.id,
-              );
-              if (index >= 0) {
-                resultSongs[index] = updated;
-              }
-            });
-          },
-          onDownloadTap: () => widget.onSongDownload(matchedSongs[i]),
-        ),
+          if (_searchPending && resultSongs.isNotEmpty)
+            const _SearchUpdatingHint(),
+          for (var i = 0; i < matchedSongs.length; i++)
+            SongTile(
+              song: matchedSongs[i],
+              index: i + 1,
+              compact: compact,
+              showAlbum: !compact,
+              downloaded: downloads.any(
+                (task) => task.song.id == matchedSongs[i].id,
+              ),
+              onTap: () =>
+                  widget.onSongTap(matchedSongs[i], queue: matchedSongs),
+              onPlayNextTap: () => widget.onSongPlayNext(matchedSongs[i]),
+              onAddToPlaylistTap: () =>
+                  widget.onSongAddToPlaylist(matchedSongs[i]),
+              onEditTap: widget.canManageLibrary
+                  ? () => widget.onSongEdit(matchedSongs[i])
+                  : null,
+              onFavoriteTap: () async {
+                final updated = await widget.onFavoriteToggle(matchedSongs[i]);
+                if (!context.mounted) {
+                  return;
+                }
+                setState(() {
+                  final index = resultSongs.indexWhere(
+                    (song) => song.id == updated.id,
+                  );
+                  if (index >= 0) {
+                    resultSongs[index] = updated;
+                  }
+                });
+              },
+              onDownloadTap: () => widget.onSongDownload(matchedSongs[i]),
+            ),
+        ],
+      ),
     ];
+  }
+}
+
+class _SearchUpdatingHint extends StatelessWidget {
+  const _SearchUpdatingHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '正在更新搜索结果…',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: kMuted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchLoadingPreview extends StatelessWidget {
+  const _SearchLoadingPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        children: [for (var i = 0; i < 5; i++) const _SearchLoadingRow()],
+      ),
+    );
+  }
+}
+
+class _SearchLoadingRow extends StatelessWidget {
+  const _SearchLoadingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 58,
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFCFD),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEAF0F4)),
+      ),
+      child: Row(
+        children: const [
+          _SearchSkeletonBlock(width: 26, height: 26, radius: 13),
+          SizedBox(width: 14),
+          _SearchSkeletonBlock(width: 42, height: 42, radius: 12),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SearchSkeletonBlock(width: 170, height: 14, radius: 7),
+                SizedBox(height: 8),
+                _SearchSkeletonBlock(width: 96, height: 10, radius: 5),
+              ],
+            ),
+          ),
+          _SearchSkeletonBlock(width: 44, height: 18, radius: 9),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchSkeletonBlock extends StatelessWidget {
+  const _SearchSkeletonBlock({
+    required this.width,
+    required this.height,
+    required this.radius,
+  });
+
+  final double width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFE7F0F4).withValues(alpha: .9),
+            const Color(0xFFF8FCFD).withValues(alpha: .96),
+            const Color(0xFFEAF2F6).withValues(alpha: .9),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
   }
 }
 

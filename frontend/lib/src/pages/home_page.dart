@@ -674,7 +674,7 @@ class _HomePageState extends State<HomePage> {
     if (selectedSegment == 2) {
       return '暂无下载歌曲';
     }
-    return '暂无歌曲，请先在 MySQL 中添加真实音乐数据';
+    return '暂无歌曲';
   }
 
   bool _isDownloaded(Song song) {

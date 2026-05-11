@@ -176,7 +176,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
     if (selectedTab == 2) {
       return '暂无收藏的歌单';
     }
-    return '暂无歌单，请先在 MySQL 中添加真实歌单数据';
+    return '暂无歌单';
   }
 
   Future<void> _openDetail(BuildContext context, Playlist playlist) async {
