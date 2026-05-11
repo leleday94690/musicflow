@@ -227,17 +227,21 @@ class UpdateService {
       final script = File(
         '${directory.path}${Platform.pathSeparator}musicflow_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
       );
+      final launcher = File(
+        '${directory.path}${Platform.pathSeparator}musicflow_update_${DateTime.now().millisecondsSinceEpoch}.vbs',
+      );
       final installDir = File(Platform.resolvedExecutable).parent.path;
       await script.writeAsString(
         _windowsInstallScript(
           installerPath: installerPath,
           installDir: installDir,
           appPid: pid,
+          launcherPath: launcher.path,
         ),
       );
-      await Process.start('cmd.exe', [
-        '/c',
-        script.path,
+      await launcher.writeAsString(_windowsLauncherScript(script.path));
+      await Process.start('wscript.exe', [
+        launcher.path,
       ], mode: ProcessStartMode.detached);
       exit(0);
     } catch (error) {
@@ -361,15 +365,18 @@ String _windowsInstallScript({
   required String installerPath,
   required String installDir,
   required int appPid,
+  required String launcherPath,
 }) {
   final installer = _escapeWindowsBatchValue(installerPath);
   final directory = _escapeWindowsBatchValue(installDir);
+  final launcher = _escapeWindowsBatchValue(launcherPath);
   return '''
 @echo off
 setlocal
 set "INSTALLER=$installer"
 set "INSTALL_DIR=$directory"
 set "APP_PID=$appPid"
+set "LAUNCHER=$launcher"
 set "LOG=%TEMP%\\MusicFlow-updater.log"
 echo [%date% %time%] installer started, pid=%APP_PID%, installer=%INSTALLER%, dir=%INSTALL_DIR%>>"%LOG%"
 for /l %%i in (1,1,120) do (
@@ -383,12 +390,25 @@ timeout /t 1 /nobreak >nul
 :install
 if not exist "%INSTALLER%" (
   echo [%date% %time%] installer not found>>"%LOG%"
+  if exist "%LAUNCHER%" del /f /q "%LAUNCHER%" >nul 2>&1
+  del /f /q "%~f0" >nul 2>&1
   exit /b 1
 )
 echo [%date% %time%] running installer>>"%LOG%"
 "%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /DIR="%INSTALL_DIR%" >>"%LOG%" 2>&1
-echo [%date% %time%] installer exit code=%ERRORLEVEL%>>"%LOG%"
-exit /b %ERRORLEVEL%
+set "EXIT_CODE=%ERRORLEVEL%"
+echo [%date% %time%] installer exit code=%EXIT_CODE%>>"%LOG%"
+if exist "%LAUNCHER%" del /f /q "%LAUNCHER%" >nul 2>&1
+del /f /q "%~f0" >nul 2>&1
+exit /b %EXIT_CODE%
+''';
+}
+
+String _windowsLauncherScript(String scriptPath) {
+  final script = _escapeWindowsVbsString(scriptPath);
+  return '''
+Set shell = CreateObject("WScript.Shell")
+shell.Run "cmd.exe /d /c ""$script""", 0, False
 ''';
 }
 
@@ -400,6 +420,10 @@ String _escapeWindowsBatchValue(String value) {
       .replaceAll('<', '^<')
       .replaceAll('>', '^>')
       .replaceAll('%', '%%');
+}
+
+String _escapeWindowsVbsString(String value) {
+  return value.replaceAll('"', '""');
 }
 
 class AppUpdateInfo {
