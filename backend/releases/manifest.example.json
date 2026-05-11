@@ -20,8 +20,8 @@
       "releaseNotes": "优化播放详情、搜索结果与播放队列体验，支持播放队列分页加载并减少页面切换闪烁。",
       "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.22+23.exe",
       "fileName": "MusicFlow-Setup-1.0.22+23.exe",
-      "fileSize": 11082960,
-      "sha256": "821141902b7dd93159d9242ee82b0ceb4f397ad4eabf67b35c23decb54773ea2",
+      "fileSize": 11083026,
+      "sha256": "4d3e11c88648ba89d865692406f9eee748b3ba9f980d0b5de3e832cf15a95c35",
       "mandatory": false
     }
   ]
