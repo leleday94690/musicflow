@@ -379,15 +379,10 @@ set "APP_PID=$appPid"
 set "LAUNCHER=$launcher"
 set "LOG=%TEMP%\\MusicFlow-updater.log"
 echo [%date% %time%] installer started, pid=%APP_PID%, installer=%INSTALLER%, dir=%INSTALL_DIR%>>"%LOG%"
-for /l %%i in (1,1,120) do (
-  tasklist /FI "PID eq %APP_PID%" 2>nul | findstr /R /C:"[ ]%APP_PID%[ ]" >nul
-  if errorlevel 1 goto install
-  timeout /t 1 /nobreak >nul
-)
-echo [%date% %time%] app process still running, forcing taskkill>>"%LOG%"
+timeout /t 1 /nobreak >nul
+echo [%date% %time%] ensuring app process is closed>>"%LOG%"
 taskkill /PID %APP_PID% /T /F >>"%LOG%" 2>&1
 timeout /t 1 /nobreak >nul
-:install
 if not exist "%INSTALLER%" (
   echo [%date% %time%] installer not found>>"%LOG%"
   if exist "%LAUNCHER%" del /f /q "%LAUNCHER%" >nul 2>&1

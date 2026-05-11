@@ -6,6 +6,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/app.dart';
+import 'src/theme.dart';
 
 final _desktopWindowController = _DesktopWindowController();
 final GlobalKey<NavigatorState> musicFlowNavigatorKey =
@@ -52,8 +53,7 @@ Future<void> _configureDesktopWindow() async {
 
 class _DesktopWindowController with WindowListener, TrayListener {
   var _isQuitting = false;
-  var _hideNoticeShowing = false;
-  var _hideNoticeShown = false;
+  var _closeDialogShowing = false;
 
   Future<void> initialize() async {
     await windowManager.setPreventClose(true);
@@ -65,6 +65,7 @@ class _DesktopWindowController with WindowListener, TrayListener {
       Menu(
         items: [
           MenuItem(key: 'show', label: '显示 MusicFlow'),
+          MenuItem(key: 'hide', label: '隐藏到托盘'),
           MenuItem.separator(),
           MenuItem(key: 'exit', label: '退出 MusicFlow'),
         ],
@@ -78,27 +79,23 @@ class _DesktopWindowController with WindowListener, TrayListener {
     if (!preventClose) {
       return;
     }
-    if (Platform.isWindows) {
-      final isMinimized = await windowManager.isMinimized();
-      if (isMinimized) {
-        return;
-      }
-    }
     if (_isQuitting) {
       await windowManager.destroy();
       return;
     }
-    if (!_hideNoticeShown) {
-      if (_hideNoticeShowing) {
-        return;
-      }
-      final shouldHide = await _showHideNotice();
-      if (!shouldHide) {
-        return;
-      }
-      _hideNoticeShown = true;
+    if (_closeDialogShowing) {
+      return;
     }
-    await windowManager.hide();
+    final action = await _showCloseDialog();
+    switch (action) {
+      case _WindowCloseAction.hide:
+        await windowManager.hide();
+      case _WindowCloseAction.quit:
+        await _quitApp();
+      case _WindowCloseAction.cancel:
+      case null:
+        return;
+    }
   }
 
   @override
@@ -116,9 +113,10 @@ class _DesktopWindowController with WindowListener, TrayListener {
     switch (menuItem.key) {
       case 'show':
         await _showWindow();
+      case 'hide':
+        await windowManager.hide();
       case 'exit':
-        _isQuitting = true;
-        exit(0);
+        await _quitApp();
     }
   }
 
@@ -127,35 +125,123 @@ class _DesktopWindowController with WindowListener, TrayListener {
     await windowManager.focus();
   }
 
-  Future<bool> _showHideNotice() async {
+  Future<void> _quitApp() async {
+    if (_isQuitting) {
+      return;
+    }
+    _isQuitting = true;
+    try {
+      await windowManager.setPreventClose(false);
+    } catch (_) {}
+    exit(0);
+  }
+
+  Future<_WindowCloseAction?> _showCloseDialog() async {
     final context = musicFlowNavigatorKey.currentContext;
     if (context == null) {
-      return true;
+      return _WindowCloseAction.hide;
     }
-    _hideNoticeShowing = true;
+    _closeDialogShowing = true;
     try {
-      final shouldHide = await showDialog<bool>(
+      final action = await showDialog<_WindowCloseAction>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('关闭后继续后台运行'),
-          content: const Text('点击关闭按钮会隐藏到系统托盘。你可以点击托盘图标恢复窗口，或在托盘菜单中选择退出。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
+        builder: (context) {
+          final textTheme = Theme.of(context).textTheme;
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(26),
             ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(true),
-              icon: const Icon(Icons.keyboard_arrow_down_rounded),
-              label: const Text('后台运行'),
+            icon: Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: kAccent.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.music_note_rounded,
+                color: kAccentDark,
+                size: 28,
+              ),
             ),
-          ],
-        ),
+            title: Text(
+              '关闭 MusicFlow？',
+              textAlign: TextAlign.center,
+              style: textTheme.titleLarge?.copyWith(
+                color: kInk,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            content: Text(
+              '你可以最小化到系统托盘继续播放，也可以完全退出应用。',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: kMuted,
+                height: 1.55,
+              ),
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actionsPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(context).pop(_WindowCloseAction.cancel),
+                style: TextButton.styleFrom(
+                  foregroundColor: kMuted,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text('取消'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    Navigator.of(context).pop(_WindowCloseAction.hide),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kAccentDark,
+                  side: BorderSide(color: kAccent.withValues(alpha: .26)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                label: const Text('最小化到托盘'),
+              ),
+              FilledButton.icon(
+                onPressed: () =>
+                    Navigator.of(context).pop(_WindowCloseAction.quit),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFE15B5B),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.power_settings_new_rounded, size: 18),
+                label: const Text('退出应用'),
+              ),
+            ],
+          );
+        },
       );
-      return shouldHide ?? false;
+      return action;
     } finally {
-      _hideNoticeShowing = false;
+      _closeDialogShowing = false;
     }
   }
 }
+
+enum _WindowCloseAction { cancel, hide, quit }
