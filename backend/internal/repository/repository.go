@@ -282,9 +282,9 @@ func (r *Repository) ListSongs(ctx context.Context, userID int64, limit int) ([]
 		FROM songs s
 		LEFT JOIN user_favorite_songs uf ON uf.song_id = s.id AND uf.user_id = ?
 		LEFT JOIN song_heat_stats ph ON ph.song_id = s.id
-		WHERE s.visibility = 'public'
-		ORDER BY COALESCE(ph.play_count, 0) DESC, s.created_at DESC, s.id DESC
-		LIMIT ?`, userID, limit)
+		WHERE (s.visibility = 'public' OR (s.visibility = 'private' AND s.owner_user_id = ?))
+		ORDER BY COALESCE(ph.play_count, 0) DESC, s.id ASC
+		LIMIT ?`, userID, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,10 @@ func (r *Repository) ListSongsPage(ctx context.Context, userID int64, limit int,
 		offset = 0
 	}
 	var totalCount int
-	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM songs WHERE visibility = 'public'`).Scan(&totalCount); err != nil {
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM songs
+		WHERE visibility = 'public' OR (visibility = 'private' AND owner_user_id = ?)`, userID).Scan(&totalCount); err != nil {
 		return model.SongPage{}, err
 	}
 	rows, err := r.db.QueryContext(ctx, `
@@ -315,9 +318,9 @@ func (r *Repository) ListSongsPage(ctx context.Context, userID int64, limit int,
 		FROM songs s
 		LEFT JOIN user_favorite_songs uf ON uf.song_id = s.id AND uf.user_id = ?
 		LEFT JOIN song_heat_stats ph ON ph.song_id = s.id
-		WHERE s.visibility = 'public'
-		ORDER BY COALESCE(ph.play_count, 0) DESC, s.created_at DESC, s.id DESC
-		LIMIT ? OFFSET ?`, userID, limit+1, offset)
+		WHERE (s.visibility = 'public' OR (s.visibility = 'private' AND s.owner_user_id = ?))
+		ORDER BY COALESCE(ph.play_count, 0) DESC, s.id ASC
+		LIMIT ? OFFSET ?`, userID, userID, limit+1, offset)
 	if err != nil {
 		return model.SongPage{}, err
 	}
@@ -358,7 +361,7 @@ func (r *Repository) SearchSongs(ctx context.Context, userID int64, keyword stri
 		LEFT JOIN song_heat_stats ph ON ph.song_id = s.id
 		WHERE (s.visibility = 'public' OR (s.visibility = 'private' AND s.owner_user_id = ?))
 		  AND (s.title LIKE ? OR s.artist LIKE ? OR s.album LIKE ?)
-		ORDER BY COALESCE(ph.play_count, 0) DESC, s.created_at DESC, s.id DESC
+		ORDER BY COALESCE(ph.play_count, 0) DESC, s.id ASC
 		LIMIT 50`, userID, userID, like, like, like)
 	if err != nil {
 		return nil, err
