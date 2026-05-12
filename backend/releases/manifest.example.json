@@ -15,13 +15,13 @@
     {
       "platform": "windows",
       "channel": "stable",
-      "version": "1.0.23",
-      "buildNumber": 24,
-      "releaseNotes": "修复 Windows 更新安装时可能出现终端窗口卡住的问题，优化关闭窗口、托盘最小化与退出应用体验。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.23+24.exe",
-      "fileName": "MusicFlow-Setup-1.0.23+24.exe",
-      "fileSize": 11083874,
-      "sha256": "ae659a1d2d07e0cbef1c7ee1353d87447c20bde42df424e1083ba1c5c2e51136",
+      "version": "1.0.24",
+      "buildNumber": 25,
+      "releaseNotes": "同步下载管理、最近播放与个人存储统计展示优化，改善页面加载反馈和数据呈现稳定性。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-Setup-1.0.24+25.exe",
+      "fileName": "MusicFlow-Setup-1.0.24+25.exe",
+      "fileSize": 11088235,
+      "sha256": "c6fe8260b27374fb2679b17664330b042988572c7f3177040f5cc538fd4820f2",
       "mandatory": false
     }
   ]
