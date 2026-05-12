@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -1440,12 +1441,31 @@ func (r *Repository) hydrateProfileStats(ctx context.Context, profile model.User
 	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM play_history WHERE user_id = ?`, profile.ID).Scan(&profile.RecentCount); err != nil {
 		return profile, err
 	}
-	used, err := r.storageUsedMB(ctx)
+	musicUsed, err := r.storageUsedMB(ctx)
 	if err != nil {
 		return profile, err
 	}
-	profile.StorageUsedMB = used
+	diskUsed, diskTotal, err := diskUsageMB(".")
+	if err != nil {
+		profile.StorageUsedMB = musicUsed
+		profile.StorageMusicMB = musicUsed
+		return profile, nil
+	}
+	profile.StorageUsedMB = diskUsed
+	profile.StorageLimitMB = diskTotal
+	profile.StorageMusicMB = musicUsed
 	return profile, nil
+}
+
+func diskUsageMB(path string) (int, int, error) {
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(path, &stat); err != nil {
+		return 0, 0, err
+	}
+	total := int64(stat.Blocks) * int64(stat.Bsize)
+	available := int64(stat.Bavail) * int64(stat.Bsize)
+	used := total - available
+	return int(used / 1024 / 1024), int(total / 1024 / 1024), nil
 }
 
 func (r *Repository) storageUsedMB(ctx context.Context) (int, error) {

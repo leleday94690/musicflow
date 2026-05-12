@@ -272,6 +272,7 @@ class UserProfile {
     required this.recentCount,
     required this.storageUsedMb,
     required this.storageLimitMb,
+    required this.storageMusicMb,
   });
 
   final int id;
@@ -285,6 +286,7 @@ class UserProfile {
   final int recentCount;
   final int storageUsedMb;
   final int storageLimitMb;
+  final int storageMusicMb;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
@@ -299,6 +301,7 @@ class UserProfile {
       recentCount: (json['recentCount'] as num?)?.toInt() ?? 0,
       storageUsedMb: (json['storageUsedMb'] as num?)?.toInt() ?? 0,
       storageLimitMb: (json['storageLimitMb'] as num?)?.toInt() ?? 0,
+      storageMusicMb: (json['storageMusicMb'] as num?)?.toInt() ?? 0,
     );
   }
 }

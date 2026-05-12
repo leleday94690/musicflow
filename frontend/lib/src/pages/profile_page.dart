@@ -1356,7 +1356,7 @@ class _StorageCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '已使用 ${_formatStorage(user.storageUsedMb)} / ${_formatStorage(user.storageLimitMb)}',
+            '服务器已用 ${_formatStorage(user.storageUsedMb)} / ${_formatStorage(user.storageLimitMb)}',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 10),
@@ -1366,7 +1366,7 @@ class _StorageCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            '音乐 ${_formatStorage(user.storageUsedMb)}',
+            '音乐文件 ${_formatStorage(user.storageMusicMb)}',
             style: Theme.of(context).textTheme.labelMedium,
           ),
         ],

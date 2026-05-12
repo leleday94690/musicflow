@@ -30,15 +30,24 @@ class RecentPlaysPage extends StatefulWidget {
 }
 
 class _RecentPlaysPageState extends State<RecentPlaysPage> {
-  late List<PlayHistoryItem> _items;
-  final DelayedLoadingController _refreshLoading = DelayedLoadingController();
+  List<PlayHistoryItem> _items = const [];
+  final DelayedLoadingController _refreshLoading = DelayedLoadingController(
+    delay: const Duration(milliseconds: 120),
+  );
+  DateTime? _loadingVisibleAt;
+  var _hasLoaded = false;
+  var _refreshToken = 0;
 
   @override
   void initState() {
     super.initState();
     _refreshLoading.addListener(_handleLoadingChanged);
-    _items = _fallbackItems;
-    _refresh(silent: true);
+    if (widget.token == null) {
+      _items = _fallbackItems;
+      _hasLoaded = true;
+    } else {
+      _refresh();
+    }
   }
 
   @override
@@ -50,6 +59,12 @@ class _RecentPlaysPageState extends State<RecentPlaysPage> {
   }
 
   void _handleLoadingChanged() {
+    if (_refreshLoading.visible && _loadingVisibleAt == null) {
+      _loadingVisibleAt = DateTime.now();
+    }
+    if (!_refreshLoading.visible) {
+      _loadingVisibleAt = null;
+    }
     if (mounted) {
       setState(() {});
     }
@@ -60,10 +75,14 @@ class _RecentPlaysPageState extends State<RecentPlaysPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.token != widget.token ||
         oldWidget.fallbackItems != widget.fallbackItems) {
-      if (_items.isEmpty || _items.any((item) => item.id < 0)) {
+      if (widget.token == null) {
         _items = _fallbackItems;
+        _hasLoaded = true;
+      } else if (oldWidget.token != widget.token) {
+        _items = const [];
+        _hasLoaded = false;
       }
-      _refresh(silent: true);
+      _refresh();
     }
   }
 
@@ -76,7 +95,7 @@ class _RecentPlaysPageState extends State<RecentPlaysPage> {
       final history = await MusicApiClient(
         token: token,
       ).fetchPlayHistory(limit: 80);
-      return history.isEmpty ? _fallbackItems : history;
+      return history;
     } catch (_) {
       return _fallbackItems;
     }
@@ -86,25 +105,42 @@ class _RecentPlaysPageState extends State<RecentPlaysPage> {
     return widget.fallbackItems;
   }
 
-  Future<void> _refresh({bool silent = false}) async {
+  Future<void> _refresh() async {
     if (_refreshLoading.active) {
       return;
     }
-    if (!silent) {
-      _refreshLoading.start();
-    }
+    final token = ++_refreshToken;
+    _refreshLoading.start();
     try {
       final next = await _loadHistory();
+      await _waitForLoadingToSettle(token);
       if (!mounted) {
         return;
       }
       setState(() {
         _items = next;
+        _hasLoaded = true;
       });
     } finally {
-      if (!silent) {
+      if (mounted && token == _refreshToken) {
         _refreshLoading.stop();
       }
+    }
+  }
+
+  Future<void> _waitForLoadingToSettle(int token) async {
+    if (!_refreshLoading.visible) {
+      return;
+    }
+    final shownAt = _loadingVisibleAt ?? DateTime.now();
+    final remaining =
+        const Duration(milliseconds: 180) - DateTime.now().difference(shownAt);
+    if (remaining <= Duration.zero) {
+      return;
+    }
+    await Future.delayed(remaining);
+    if (!mounted || token != _refreshToken) {
+      return;
     }
   }
 
@@ -117,6 +153,13 @@ class _RecentPlaysPageState extends State<RecentPlaysPage> {
       24,
     );
     final fallback = _items.any((item) => item.id < 0);
+    final showSkeleton =
+        !_hasLoaded && _items.isEmpty && _refreshLoading.visible;
+    final showPendingSpace =
+        !_hasLoaded &&
+        _items.isEmpty &&
+        _refreshLoading.active &&
+        !showSkeleton;
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
@@ -127,23 +170,44 @@ class _RecentPlaysPageState extends State<RecentPlaysPage> {
             count: _items.length,
             busy: _refreshLoading.active,
             loading: _refreshLoading.visible,
-            fallback: fallback,
+            fallback: fallback && _hasLoaded,
+            pending: showPendingSpace,
             onBack: widget.onBack,
             onRefresh: _refresh,
           ),
           const SizedBox(height: 12),
-          if (_items.isEmpty)
-            const EmptyState(
-              icon: Icons.history_rounded,
-              message: '暂无最近播放记录',
-              margin: EdgeInsets.symmetric(vertical: 32),
-            )
-          else
-            _HistoryList(
-              items: _items,
-              onSongTap: widget.onSongTap,
-              onFavoriteToggle: widget.onFavoriteToggle,
-            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SizeTransition(
+                  sizeFactor: animation,
+                  axisAlignment: -1,
+                  child: child,
+                ),
+              );
+            },
+            child: showSkeleton
+                ? const _HistorySkeletonList(key: ValueKey('skeleton'))
+                : showPendingSpace
+                ? const SizedBox(key: ValueKey('pending'), height: 220)
+                : _items.isEmpty
+                ? const EmptyState(
+                    key: ValueKey('empty'),
+                    icon: Icons.history_rounded,
+                    message: '暂无最近播放记录',
+                    margin: EdgeInsets.symmetric(vertical: 32),
+                  )
+                : _HistoryList(
+                    key: ValueKey('history'),
+                    items: _items,
+                    onSongTap: widget.onSongTap,
+                    onFavoriteToggle: widget.onFavoriteToggle,
+                  ),
+          ),
         ],
       ),
     );
@@ -157,6 +221,7 @@ class _Header extends StatelessWidget {
     required this.busy,
     required this.loading,
     required this.fallback,
+    required this.pending,
     required this.onBack,
     required this.onRefresh,
   });
@@ -166,6 +231,7 @@ class _Header extends StatelessWidget {
   final bool busy;
   final bool loading;
   final bool fallback;
+  final bool pending;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
 
@@ -215,7 +281,9 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  loading
+                  pending
+                      ? '正在读取播放记录'
+                      : loading
                       ? '同步中'
                       : fallback
                       ? '显示最近概览'
@@ -247,6 +315,7 @@ class _Header extends StatelessWidget {
 
 class _HistoryList extends StatelessWidget {
   const _HistoryList({
+    super.key,
     required this.items,
     required this.onSongTap,
     required this.onFavoriteToggle,
@@ -272,6 +341,131 @@ class _HistoryList extends StatelessWidget {
               onFavoriteTap: () => onFavoriteToggle(items[index].song),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _HistorySkeletonList extends StatefulWidget {
+  const _HistorySkeletonList({super.key});
+
+  @override
+  State<_HistorySkeletonList> createState() => _HistorySkeletonListState();
+}
+
+class _HistorySkeletonListState extends State<_HistorySkeletonList>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 920),
+      lowerBound: 0,
+      upperBound: 1,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final color = Color.lerp(
+          const Color(0xFFEAF0F4),
+          const Color(0xFFF7FAFC),
+          Curves.easeInOut.transform(_controller.value),
+        )!;
+        return Container(
+          decoration: cardDecoration(radius: 18),
+          child: Column(
+            children: [
+              for (var index = 0; index < 8; index++)
+                _HistorySkeletonRow(color: color, showDivider: index < 7),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HistorySkeletonRow extends StatelessWidget {
+  const _HistorySkeletonRow({required this.color, required this.showDivider});
+
+  final Color color;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: showDivider
+            ? const Border(bottom: BorderSide(color: kLine))
+            : null,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          _SkeletonBlock(width: 16, height: 10, radius: 5, color: color),
+          const SizedBox(width: 10),
+          _SkeletonBlock(width: 42, height: 42, radius: 9, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: .38,
+                  child: _SkeletonBlock(height: 12, radius: 6, color: color),
+                ),
+                const SizedBox(height: 8),
+                FractionallySizedBox(
+                  widthFactor: .28,
+                  child: _SkeletonBlock(height: 10, radius: 5, color: color),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _SkeletonBlock(width: 52, height: 10, radius: 5, color: color),
+          const SizedBox(width: 14),
+          _SkeletonBlock(width: 24, height: 24, radius: 12, color: color),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({
+    this.width,
+    required this.height,
+    required this.radius,
+    required this.color,
+  });
+
+  final double? width;
+  final double height;
+  final double radius;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }

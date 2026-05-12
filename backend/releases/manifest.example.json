@@ -3,13 +3,13 @@
     {
       "platform": "macos",
       "channel": "stable",
-      "version": "1.0.22",
-      "buildNumber": 23,
-      "releaseNotes": "优化播放详情、搜索结果与播放队列体验，支持播放队列分页加载并减少页面切换闪烁。",
-      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.22.dmg",
-      "fileName": "MusicFlow-1.0.22.dmg",
-      "fileSize": 22208410,
-      "sha256": "0952fead50068508f02ad8171c10bfd2454bb8cacce67924f9f89bf47a06d0d0",
+      "version": "1.0.24",
+      "buildNumber": 25,
+      "releaseNotes": "优化下载管理、最近播放与个人存储统计展示，改善页面加载反馈和数据呈现稳定性。",
+      "downloadUrl": "http://8.136.123.14/api/app-update/download/MusicFlow-1.0.24.dmg",
+      "fileName": "MusicFlow-1.0.24.dmg",
+      "fileSize": 22229836,
+      "sha256": "37ac7c62dc09dbff62e10a986c146dbde28629adedbc684b245afa125d242de5",
       "mandatory": false
     },
     {

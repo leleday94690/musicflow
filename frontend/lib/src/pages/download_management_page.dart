@@ -36,11 +36,15 @@ class DownloadManagementPage extends StatefulWidget {
 class _DownloadManagementPageState extends State<DownloadManagementPage> {
   static const int _pageSize = 50;
 
-  late List<DownloadTask> _tasks;
-  final DelayedLoadingController _refreshLoading = DelayedLoadingController();
+  List<DownloadTask> _tasks = const [];
+  final DelayedLoadingController _refreshLoading = DelayedLoadingController(
+    delay: const Duration(milliseconds: 120),
+  );
   String _selectedStatus = 'all';
   bool _hasMore = false;
   bool _isLoadingMore = false;
+  bool _hasLoaded = false;
+  DateTime? _loadingVisibleAt;
   int _nextOffset = 0;
   int _totalCount = 0;
   int _completedCount = 0;
@@ -52,9 +56,13 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
   void initState() {
     super.initState();
     _refreshLoading.addListener(_handleLoadingChanged);
-    _tasks = _sortLatestFirst(widget.fallbackTasks);
-    _syncCountsFromTasks(_tasks);
-    _refresh(silent: true);
+    if (widget.authToken == null) {
+      _tasks = _sortLatestFirst(widget.fallbackTasks);
+      _syncCountsFromTasks(_tasks);
+      _hasLoaded = true;
+    } else {
+      _refresh();
+    }
   }
 
   @override
@@ -66,6 +74,12 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
   }
 
   void _handleLoadingChanged() {
+    if (_refreshLoading.visible && _loadingVisibleAt == null) {
+      _loadingVisibleAt = DateTime.now();
+    }
+    if (!_refreshLoading.visible) {
+      _loadingVisibleAt = null;
+    }
     if (mounted) {
       setState(() {});
     }
@@ -74,9 +88,25 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
   @override
   void didUpdateWidget(covariant DownloadManagementPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.fallbackTasks != widget.fallbackTasks && _tasks.isEmpty) {
+    if (oldWidget.authToken != widget.authToken) {
+      _tasks = const [];
+      _hasLoaded = false;
+      _resetPageState();
+      if (widget.authToken == null) {
+        _tasks = _sortLatestFirst(widget.fallbackTasks);
+        _syncCountsFromTasks(_tasks);
+        _hasLoaded = true;
+      } else {
+        _refresh();
+      }
+      return;
+    }
+    if (oldWidget.fallbackTasks != widget.fallbackTasks &&
+        widget.authToken == null &&
+        _tasks.isEmpty) {
       _tasks = _sortLatestFirst(widget.fallbackTasks);
       _syncCountsFromTasks(_tasks);
+      _hasLoaded = true;
     }
   }
 
@@ -98,17 +128,45 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
       if (requestSerial != _requestSerial) {
         return;
       }
+      if (!silent) {
+        await _waitForLoadingToSettle(requestSerial);
+      }
       setState(() {
         _applyPage(page, append: false);
+        _hasLoaded = true;
       });
     } catch (_) {
       if (!mounted) {
         return;
       }
+      if (!_hasLoaded && _tasks.isEmpty) {
+        final fallback = _sortLatestFirst(widget.fallbackTasks);
+        setState(() {
+          _tasks = fallback;
+          _syncCountsFromTasks(fallback);
+          _hasLoaded = true;
+        });
+      }
     } finally {
       if (!silent) {
         _refreshLoading.stop();
       }
+    }
+  }
+
+  Future<void> _waitForLoadingToSettle(int requestSerial) async {
+    if (!_refreshLoading.visible) {
+      return;
+    }
+    final shownAt = _loadingVisibleAt ?? DateTime.now();
+    final remaining =
+        const Duration(milliseconds: 180) - DateTime.now().difference(shownAt);
+    if (remaining <= Duration.zero) {
+      return;
+    }
+    await Future.delayed(remaining);
+    if (!mounted || requestSerial != _requestSerial) {
+      return;
     }
   }
 
@@ -146,6 +204,13 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
   Widget build(BuildContext context) {
     final visibleTasks = _visibleTasks;
     final queue = visibleTasks.map((task) => task.song).toList();
+    final showSkeleton =
+        !_hasLoaded && _tasks.isEmpty && _refreshLoading.visible;
+    final showPendingSpace =
+        !_hasLoaded &&
+        _tasks.isEmpty &&
+        _refreshLoading.active &&
+        !showSkeleton;
     final padding = EdgeInsets.fromLTRB(
       widget.isMobile ? 18 : 28,
       widget.isMobile ? 14 : 20,
@@ -174,6 +239,7 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
                     completedCount: _completedCount,
                     busy: _refreshLoading.active || _isLoadingMore,
                     loading: _refreshLoading.visible,
+                    pending: showPendingSpace,
                     onBack: widget.onBack,
                     onRefresh: _refresh,
                     onClearCompleted: _completedCount == 0
@@ -203,7 +269,16 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
                 ],
               ),
             ),
-            if (_tasks.isEmpty)
+            if (showSkeleton)
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 0),
+                sliver: const SliverToBoxAdapter(
+                  child: _DownloadSkeletonList(),
+                ),
+              )
+            else if (showPendingSpace)
+              const SliverToBoxAdapter(child: SizedBox(height: 220))
+            else if (_tasks.isEmpty)
               const SliverToBoxAdapter(
                 child: EmptyState(
                   icon: Icons.download_done_rounded,
@@ -267,10 +342,10 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
     setState(() {
       _selectedStatus = status;
       _tasks = const [];
-      _hasMore = false;
-      _nextOffset = 0;
+      _hasLoaded = false;
+      _resetPageState();
     });
-    _refresh(silent: true);
+    _refresh();
   }
 
   Future<void> _clearCompleted() async {
@@ -332,6 +407,16 @@ class _DownloadManagementPageState extends State<DownloadManagementPage> {
         .length;
   }
 
+  void _resetPageState() {
+    _hasMore = false;
+    _isLoadingMore = false;
+    _nextOffset = 0;
+    _totalCount = 0;
+    _completedCount = 0;
+    _activeCount = 0;
+    _failedCount = 0;
+  }
+
   List<DownloadTask> _dedupeTasks(List<DownloadTask> tasks) {
     final seen = <int>{};
     return [
@@ -358,6 +443,7 @@ class _DownloadHeader extends StatelessWidget {
     required this.completedCount,
     required this.busy,
     required this.loading,
+    required this.pending,
     required this.onBack,
     required this.onRefresh,
     required this.onClearCompleted,
@@ -368,6 +454,7 @@ class _DownloadHeader extends StatelessWidget {
   final int completedCount;
   final bool busy;
   final bool loading;
+  final bool pending;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
   final VoidCallback? onClearCompleted;
@@ -418,7 +505,11 @@ class _DownloadHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  loading ? '同步中' : '$count 个下载任务',
+                  pending
+                      ? '正在读取下载任务'
+                      : loading
+                      ? '同步中'
+                      : '$count 个下载任务',
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
               ],
@@ -769,6 +860,187 @@ class _DownloadTaskRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DownloadSkeletonList extends StatefulWidget {
+  const _DownloadSkeletonList();
+
+  @override
+  State<_DownloadSkeletonList> createState() => _DownloadSkeletonListState();
+}
+
+class _DownloadSkeletonListState extends State<_DownloadSkeletonList>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 920),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final color = Color.lerp(
+          const Color(0xFFEAF0F4),
+          const Color(0xFFF7FAFC),
+          Curves.easeInOut.transform(_controller.value),
+        )!;
+        return Column(
+          children: [
+            for (var index = 0; index < 8; index++)
+              _DownloadSkeletonRow(
+                color: color,
+                isFirst: index == 0,
+                isLast: index == 7,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DownloadSkeletonRow extends StatelessWidget {
+  const _DownloadSkeletonRow({
+    required this.color,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  final Color color;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(
+          top: isFirst ? const Radius.circular(18) : Radius.zero,
+          bottom: isLast ? const Radius.circular(18) : Radius.zero,
+        ),
+        border: Border(
+          top: isFirst ? const BorderSide(color: kLine) : BorderSide.none,
+          left: const BorderSide(color: kLine),
+          right: const BorderSide(color: kLine),
+          bottom: const BorderSide(color: kLine),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          _DownloadSkeletonBlock(
+            width: 16,
+            height: 10,
+            radius: 5,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          _DownloadSkeletonBlock(
+            width: 42,
+            height: 42,
+            radius: 9,
+            color: color,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: FractionallySizedBox(
+                        widthFactor: .42,
+                        alignment: Alignment.centerLeft,
+                        child: _DownloadSkeletonBlock(
+                          height: 12,
+                          radius: 6,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _DownloadSkeletonBlock(
+                      width: 34,
+                      height: 10,
+                      radius: 5,
+                      color: color,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                FractionallySizedBox(
+                  widthFactor: .36,
+                  child: _DownloadSkeletonBlock(
+                    height: 10,
+                    radius: 5,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                _DownloadSkeletonBlock(height: 5, radius: 99, color: color),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _DownloadSkeletonBlock(
+            width: 30,
+            height: 30,
+            radius: 15,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          _DownloadSkeletonBlock(
+            width: 30,
+            height: 30,
+            radius: 15,
+            color: color,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DownloadSkeletonBlock extends StatelessWidget {
+  const _DownloadSkeletonBlock({
+    this.width,
+    required this.height,
+    required this.radius,
+    required this.color,
+  });
+
+  final double? width;
+  final double height;
+  final double radius;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }

@@ -50,6 +50,7 @@ type UserProfile struct {
 	RecentCount    int    `json:"recentCount"`
 	StorageUsedMB  int    `json:"storageUsedMb"`
 	StorageLimitMB int    `json:"storageLimitMb"`
+	StorageMusicMB int    `json:"storageMusicMb"`
 }
 
 type AuthSession struct {
